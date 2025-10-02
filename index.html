@@ -48,6 +48,14 @@
     .canvas-container {
       flex: 1;
       min-width: 300px;
+      text-align: center;
+    }
+    .canvas-label {
+      font-size: 14px;
+      font-weight: 600;
+      color: #333;
+      margin-bottom: 8px;
+      text-align: center;
     }
     canvas {
       border: 1px solid #ddd;
@@ -120,9 +128,11 @@
 
     <div class="visualization">
       <div class="canvas-container">
+        <div class="canvas-label">Ideal Pattern</div>
         <canvas id="ideal"></canvas>
       </div>
       <div class="canvas-container">
+        <div class="canvas-label">Simulated Scan</div>
         <canvas id="sim"></canvas>
       </div>
     </div>
