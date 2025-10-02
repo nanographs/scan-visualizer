@@ -5,8 +5,9 @@ A web-based tool for visualizing raster scanning effects with configurable param
 ## 🚀 Quick Start
 
 **Option 1: Run directly in browser (Recommended)**
-- Click [here](https://yourusername.github.io/scan-visualizer/) to open the visualizer
+- Click [here](https://adammccombs.github.io/scan-visualizer/) to open the visualizer
 - No installation required - runs entirely in your browser
+- Hosted on GitHub Pages for instant access
 
 **Option 2: Download and run locally**
 1. Download the `scan_visualizer.html` file
@@ -45,6 +46,14 @@ The simulation models a first-order system response:
 - First line response (blue line)  
 - Second line response (green line)
 - Last line response (orange line)
+
+## 🌐 GitHub Pages Hosting
+
+This project is automatically deployed to GitHub Pages:
+- **Live URL**: https://adammccombs.github.io/scan-visualizer/
+- **Source**: The `index.html` file serves as the main entry point
+- **Deployment**: Automatic updates when code is pushed to the main branch
+- **No build process**: Pure HTML/CSS/JavaScript - works directly in browsers
 
 ## 🛠️ Browser Compatibility
 
