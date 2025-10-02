@@ -86,6 +86,16 @@
       color: #666;
       margin-top: 8px;
     }
+    .timing-info {
+      text-align: center;
+      margin-top: 15px;
+      font-size: 14px;
+      color: #666;
+    }
+    .timing-info span {
+      font-weight: 600;
+      color: #333;
+    }
   </style>
 </head>
 <body>
@@ -135,6 +145,10 @@
         <div class="canvas-label">Simulated Scan</div>
         <canvas id="sim"></canvas>
       </div>
+    </div>
+
+    <div class="timing-info">
+      Line: <span id="lineTime">--</span> | Frame: <span id="frameTime">--</span> | FPS: <span id="fps">--</span>
     </div>
 
     <div class="plot-container">
@@ -304,6 +318,33 @@ function drawDifference(idealCtx, simCtx, w, h) {
   simCtx.putImageData(img,0,0);
 }
 
+function calculateTiming(dwellNs, delayNs, resolution) {
+  // Calculate line time: (pixels per line * dwell time) + line delay
+  const lineTimeNs = (resolution * dwellNs) + delayNs;
+  const lineTimeMs = lineTimeNs / 1e6; // Convert to milliseconds
+  
+  // Calculate frame time: line time * number of lines
+  const frameTimeNs = lineTimeNs * resolution;
+  const frameTimeMs = frameTimeNs / 1e6; // Convert to milliseconds
+  
+  // Calculate frames per second
+  const fps = 1000 / frameTimeMs; // Convert ms to seconds and invert
+  
+  return {
+    lineTimeNs: lineTimeNs,
+    lineTimeMs: lineTimeMs,
+    frameTimeNs: frameTimeNs,
+    frameTimeMs: frameTimeMs,
+    fps: fps
+  };
+}
+
+function updateTimingDisplay(timing) {
+  document.getElementById('lineTime').textContent = `${timing.lineTimeMs.toFixed(3)} ms`;
+  document.getElementById('frameTime').textContent = `${timing.frameTimeMs.toFixed(3)} ms`;
+  document.getElementById('fps').textContent = `${timing.fps.toFixed(2)} fps`;
+}
+
 
 function plot(canvas,recs){
   const ctx=canvas.getContext("2d");
@@ -341,6 +382,10 @@ function runSimulation() {
   drawPattern(ideal,pat,resolution,resolution);
   const recs=simulate(ideal,sim,dwell,delay,bw);
   plot(document.getElementById("plot"),recs);
+  
+  // Calculate and display timing information
+  const timing = calculateTiming(dwell, delay, resolution);
+  updateTimingDisplay(timing);
   
   // Apply view mode
   if (viewMode === "error") {
