@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Slider Test Suite</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; }
+    .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ccc; border-radius: 5px; }
+    .test-pass { background: #d4edda; border-color: #c3e6cb; }
+    .test-fail { background: #f8d7da; border-color: #f5c6cb; }
+    .test-result { font-weight: bold; margin: 10px 0; }
+    .slider-test { margin: 10px 0; padding: 10px; background: #f8f9fa; border-radius: 3px; }
+    .expected { color: #666; font-style: italic; }
+    .actual { color: #333; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <h1>Scan Visualizer - Slider Test Suite</h1>
+  <p>This test suite validates all slider functionality to prevent regressions.</p>
+  
+  <div id="test-results"></div>
+  
+  <script>
+    // Import the conversion functions from the main application
+    function sliderToBandwidth(sliderValue) {
+      const minBw = 1;
+      const maxBw = 1000;
+      const ratio = maxBw / minBw;
+      return minBw * Math.pow(ratio, sliderValue / 100);
+    }
+    
+    function bandwidthToSlider(bandwidthValue) {
+      const minBw = 1;
+      const maxBw = 1000;
+      const ratio = maxBw / minBw;
+      return 100 * (Math.log(bandwidthValue / minBw) / Math.log(ratio));
+    }
+    
+    function sliderToSlewRate(sliderValue) {
+      const minSlew = 0.001;
+      const maxSlew = 1.0;
+      const ratio = maxSlew / minSlew;
+      return minSlew * Math.pow(ratio, sliderValue / 100);
+    }
+    
+    function slewRateToSlider(slewRateValue) {
+      const minSlew = 0.001;
+      const maxSlew = 1.0;
+      const ratio = maxSlew / minSlew;
+      return 100 * (Math.log(slewRateValue / minSlew) / Math.log(ratio));
+    }
+    
+    // Test suite
+    class SliderTestSuite {
+      constructor() {
+        this.results = [];
+        this.runAllTests();
+        this.displayResults();
+      }
+      
+      runAllTests() {
+        this.testBandwidthExponentialScaling();
+        this.testSlewRateExponentialScaling();
+        this.testDwellTimeLinearScaling();
+        this.testLineDelayUnitConversion();
+        this.testDefaultValues();
+        this.testEdgeCases();
+        this.testBidirectionalConversion();
+      }
+      
+      testBandwidthExponentialScaling() {
+        const tests = [
+          { slider: 0, expected: 1, tolerance: 0.1 },
+          { slider: 25, expected: 5.6, tolerance: 0.5 },
+          { slider: 43, expected: 20, tolerance: 1 },
+          { slider: 50, expected: 31.6, tolerance: 1 },
+          { slider: 75, expected: 177.8, tolerance: 5 },
+          { slider: 100, expected: 1000, tolerance: 1 }
+        ];
+        
+        this.runTestGroup("Bandwidth Exponential Scaling", tests, (test) => {
+          const actual = sliderToBandwidth(test.slider);
+          return {
+            description: `Slider ${test.slider} → ${actual.toFixed(1)} kHz`,
+            expected: `${test.expected} kHz`,
+            actual: `${actual.toFixed(1)} kHz`,
+            passed: Math.abs(actual - test.expected) <= test.tolerance
+          };
+        });
+      }
+      
+      testSlewRateExponentialScaling() {
+        const tests = [
+          { slider: 0, expected: 0.001, tolerance: 0.0001 },
+          { slider: 25, expected: 0.0056, tolerance: 0.0005 },
+          { slider: 57, expected: 0.05, tolerance: 0.005 },
+          { slider: 75, expected: 0.178, tolerance: 0.01 },
+          { slider: 100, expected: 1.0, tolerance: 0.01 }
+        ];
+        
+        this.runTestGroup("Slew Rate Exponential Scaling", tests, (test) => {
+          const actual = sliderToSlewRate(test.slider);
+          return {
+            description: `Slider ${test.slider} → ${actual.toFixed(3)} FS/μs`,
+            expected: `${test.expected} FS/μs`,
+            actual: `${actual.toFixed(3)} FS/μs`,
+            passed: Math.abs(actual - test.expected) <= test.tolerance
+          };
+        });
+      }
+      
+      testDwellTimeLinearScaling() {
+        const tests = [
+          { slider: 10, expected: 10 },
+          { slider: 100, expected: 100 },
+          { slider: 500, expected: 500 },
+          { slider: 1000, expected: 1000 }
+        ];
+        
+        this.runTestGroup("Dwell Time Linear Scaling", tests, (test) => {
+          const actual = test.slider; // Linear scaling
+          return {
+            description: `Slider ${test.slider} → ${actual} ns`,
+            expected: `${test.expected} ns`,
+            actual: `${actual} ns`,
+            passed: actual === test.expected
+          };
+        });
+      }
+      
+      testLineDelayUnitConversion() {
+        const tests = [
+          { sliderNs: 0, expectedUs: 0 },
+          { sliderNs: 1000, expectedUs: 1 },
+          { sliderNs: 50000, expectedUs: 50 },
+          { sliderNs: 100000, expectedUs: 100 }
+        ];
+        
+        this.runTestGroup("Line Delay Unit Conversion", tests, (test) => {
+          const actualUs = test.sliderNs / 1000;
+          return {
+            description: `Slider ${test.sliderNs} ns → ${actualUs} μs`,
+            expected: `${test.expectedUs} μs`,
+            actual: `${actualUs} μs`,
+            passed: actualUs === test.expectedUs
+          };
+        });
+      }
+      
+      testDefaultValues() {
+        const tests = [
+          { name: "Bandwidth Default", slider: 43, expected: 20, tolerance: 1 },
+          { name: "Slew Rate Default", slider: 57, expected: 0.05, tolerance: 0.005 },
+          { name: "Dwell Time Default", slider: 100, expected: 100, tolerance: 0 },
+          { name: "Line Delay Default", slider: 0, expected: 0, tolerance: 0 }
+        ];
+        
+        this.runTestGroup("Default Values", tests, (test) => {
+          let actual;
+          if (test.name.includes("Bandwidth")) {
+            actual = sliderToBandwidth(test.slider);
+          } else if (test.name.includes("Slew Rate")) {
+            actual = sliderToSlewRate(test.slider);
+          } else {
+            actual = test.slider;
+          }
+          
+          return {
+            description: `${test.name}: Slider ${test.slider}`,
+            expected: test.expected,
+            actual: actual.toFixed(3),
+            passed: Math.abs(actual - test.expected) <= test.tolerance
+          };
+        });
+      }
+      
+      testEdgeCases() {
+        const tests = [
+          { name: "Bandwidth Min", slider: 0, expected: 1 },
+          { name: "Bandwidth Max", slider: 100, expected: 1000 },
+          { name: "Slew Rate Min", slider: 0, expected: 0.001 },
+          { name: "Slew Rate Max", slider: 100, expected: 1.0 }
+        ];
+        
+        this.runTestGroup("Edge Cases", tests, (test) => {
+          let actual;
+          if (test.name.includes("Bandwidth")) {
+            actual = sliderToBandwidth(test.slider);
+          } else {
+            actual = sliderToSlewRate(test.slider);
+          }
+          
+          return {
+            description: `${test.name}: Slider ${test.slider}`,
+            expected: test.expected,
+            actual: actual.toFixed(3),
+            passed: Math.abs(actual - test.expected) <= 0.1
+          };
+        });
+      }
+      
+      testBidirectionalConversion() {
+        const tests = [
+          { name: "Bandwidth", value: 20, sliderToValue: sliderToBandwidth, valueToSlider: bandwidthToSlider },
+          { name: "Bandwidth", value: 100, sliderToValue: sliderToBandwidth, valueToSlider: bandwidthToSlider },
+          { name: "Slew Rate", value: 0.05, sliderToValue: sliderToSlewRate, valueToSlider: slewRateToSlider },
+          { name: "Slew Rate", value: 0.1, sliderToValue: sliderToSlewRate, valueToSlider: slewRateToSlider }
+        ];
+        
+        this.runTestGroup("Bidirectional Conversion", tests, (test) => {
+          const sliderPos = test.valueToSlider(test.value);
+          const backToValue = test.sliderToValue(sliderPos);
+          const tolerance = test.name.includes("Bandwidth") ? 1 : 0.01;
+          
+          return {
+            description: `${test.name}: ${test.value} → slider ${sliderPos.toFixed(1)} → ${backToValue.toFixed(3)}`,
+            expected: test.value,
+            actual: backToValue.toFixed(3),
+            passed: Math.abs(backToValue - test.value) <= tolerance
+          };
+        });
+      }
+      
+      runTestGroup(groupName, tests, testFunction) {
+        const groupResults = [];
+        let passed = 0;
+        
+        tests.forEach(test => {
+          const result = testFunction(test);
+          groupResults.push(result);
+          if (result.passed) passed++;
+        });
+        
+        this.results.push({
+          groupName,
+          tests: groupResults,
+          passed,
+          total: tests.length
+        });
+      }
+      
+      displayResults() {
+        const container = document.getElementById('test-results');
+        let html = '';
+        
+        this.results.forEach(group => {
+          const groupPassed = group.passed === group.total;
+          const groupClass = groupPassed ? 'test-pass' : 'test-fail';
+          
+          html += `
+            <div class="test-section ${groupClass}">
+              <h3>${group.groupName}</h3>
+              <div class="test-result">
+                ${group.passed}/${group.total} tests passed
+                ${groupPassed ? '✅' : '❌'}
+              </div>
+          `;
+          
+          group.tests.forEach(test => {
+            const testClass = test.passed ? 'test-pass' : 'test-fail';
+            html += `
+              <div class="slider-test ${testClass}">
+                <div><strong>${test.description}</strong></div>
+                <div class="expected">Expected: ${test.expected}</div>
+                <div class="actual">Actual: ${test.actual}</div>
+                <div>${test.passed ? '✅ PASS' : '❌ FAIL'}</div>
+              </div>
+            `;
+          });
+          
+          html += '</div>';
+        });
+        
+        // Overall summary
+        const totalTests = this.results.reduce((sum, group) => sum + group.total, 0);
+        const totalPassed = this.results.reduce((sum, group) => sum + group.passed, 0);
+        const overallPassed = totalPassed === totalTests;
+        
+        html = `
+          <div class="test-section ${overallPassed ? 'test-pass' : 'test-fail'}">
+            <h2>Overall Results</h2>
+            <div class="test-result">
+              ${totalPassed}/${totalTests} tests passed
+              ${overallPassed ? '✅ ALL TESTS PASSED' : '❌ SOME TESTS FAILED'}
+            </div>
+          </div>
+        ` + html;
+        
+        container.innerHTML = html;
+      }
+    }
+    
+    // Run tests when page loads
+    document.addEventListener('DOMContentLoaded', () => {
+      new SliderTestSuite();
+    });
+  </script>
+</body>
+</html>

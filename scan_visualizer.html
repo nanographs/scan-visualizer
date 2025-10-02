@@ -2,51 +2,377 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Scan Visualizer</title>
   <style>
-    body { font-family: sans-serif; background:#f5f5f5; padding:20px; }
-    canvas { border:1px solid #333; margin:10px; }
-    label { margin-right:10px; }
+    body { 
+      font-family: sans-serif; 
+      background:#f5f5f5; 
+      padding:10px; 
+      margin:0;
+      max-width: 100vw;
+      overflow-x: hidden;
+    }
+    
+    .container {
+      max-width: 100%;
+      margin: 0 auto;
+    }
+    
+    h2 {
+      text-align: center;
+      margin: 10px 0;
+    }
+    
+    .images-container {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      margin: 10px 0;
+      flex-wrap: wrap;
+    }
+    
+    .image-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex: 1;
+      min-width: 200px;
+      max-width: 300px;
+    }
+    
+    .image-label {
+      writing-mode: vertical-rl;
+      text-orientation: mixed;
+      transform: rotate(180deg);
+      font-size: 14px;
+      font-weight: bold;
+      color: #333;
+      white-space: nowrap;
+      margin: 0;
+      padding: 5px;
+    }
+    
+    .image-content {
+      flex: 1;
+      text-align: center;
+    }
+    
+    canvas { 
+      border: 1px solid #333; 
+      max-width: 100%;
+      height: auto;
+      display: block;
+      margin: 0 auto;
+    }
+    
+    .main-controls {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      margin: 20px 0;
+      padding: 15px;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .slider-group {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    
+    .slider-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    
+    .slider-row label {
+      min-width: 120px;
+      font-weight: bold;
+    }
+    
+    .slider-row input[type="number"] {
+      width: 80px;
+      padding: 5px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      order: 1;
+    }
+    
+    .slider-row input[type="range"] {
+      flex: 1;
+      min-width: 150px;
+      order: 2;
+    }
+    
+    .secondary-controls {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin: 20px 0;
+      padding: 15px;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .control-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    
+    .control-row label {
+      min-width: 100px;
+      font-weight: bold;
+    }
+    
+    .control-row select {
+      padding: 5px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      min-width: 120px;
+    }
+    
+    .plot-container {
+      margin: 20px 0;
+      text-align: center;
+    }
+    
+    .plot-container canvas {
+      max-width: 100%;
+      height: auto;
+    }
+    
+    .plot-legend {
+      text-align: center;
+      margin: 10px 0;
+      font-size: 12px;
+      color: #666;
+    }
+    
+    .timing-info {
+      text-align: center;
+      margin: 15px 0;
+      font-size: 14px;
+      color: #666;
+    }
+    
+    .timing-info span {
+      font-weight: 600;
+      color: #333;
+    }
+    
+    .limitation-info {
+      background: #f0f8ff;
+      border: 1px solid #b3d9ff;
+      border-radius: 6px;
+      padding: 12px;
+      margin: 15px 0;
+      font-size: 14px;
+    }
+    
+    .limitation-info h3 {
+      margin: 0 0 8px 0;
+      color: #0066cc;
+      font-size: 16px;
+    }
+    
+    @media (max-width: 768px) {
+      body {
+        padding: 5px;
+      }
+      
+      .images-container {
+        flex-direction: column;
+        align-items: center;
+      }
+      
+      .image-wrapper {
+        max-width: 100%;
+        flex-direction: row;
+        align-items: center;
+      }
+      
+      .image-label {
+        writing-mode: vertical-rl;
+        text-orientation: mixed;
+        transform: rotate(180deg);
+        margin-right: 10px;
+        min-width: 20px;
+        font-size: 12px;
+      }
+      
+      .main-controls {
+        padding: 10px;
+        margin: 10px 0;
+      }
+      
+      .slider-row {
+        flex-direction: row;
+        align-items: center;
+        margin-bottom: 8px;
+        gap: 8px;
+      }
+      
+      .slider-row .label-input-group {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        min-width: 0;
+        flex: 1;
+      }
+      
+      .slider-row label {
+        font-size: 12px;
+        min-width: auto;
+        flex-shrink: 0;
+        white-space: nowrap;
+      }
+      
+      .slider-row input[type="number"] {
+        width: 50px;
+        flex-shrink: 0;
+        font-size: 12px;
+        padding: 3px 5px;
+      }
+      
+      .slider-row input[type="range"] {
+        flex: 1;
+        min-width: 80px;
+        height: 20px;
+      }
+      
+      .control-row {
+        flex-direction: column;
+        align-items: stretch;
+        margin-bottom: 8px;
+      }
+      
+      .control-row label {
+        min-width: auto;
+        font-size: 12px;
+        margin-bottom: 3px;
+      }
+      
+      .control-row select {
+        font-size: 12px;
+        padding: 5px;
+      }
+    }
   </style>
 </head>
 <body>
-  <h2>Scan Visualizer</h2>
-  <div>
-    <label>Dwell time (ns): <input id="dwell" type="number" value="100"></label>
-    <label>Line delay (ns): <input id="delay" type="number" value="0"></label>
-    <label>Bandwidth (kHz): <input id="bw" type="number" value="20"></label>
+  <div class="container">
+    <!-- Images at the top -->
+    <div class="images-container">
+      <div class="image-wrapper">
+        <div class="image-label">Ideal Pattern</div>
+        <div class="image-content">
+          <canvas id="ideal"></canvas>
+        </div>
+      </div>
+      <div class="image-wrapper">
+        <div class="image-label">Simulated Scan</div>
+        <div class="image-content">
+          <canvas id="sim"></canvas>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Timing information -->
+    <div class="timing-info">
+      Line: <span id="lineTime">--</span> | Frame: <span id="frameTime">--</span> | FPS: <span id="fps">--</span>
+    </div>
+    
+    <!-- Main controls for thumb access -->
+    <div class="main-controls">
+      <div class="slider-group">
+        <div class="slider-row">
+          <div class="label-input-group">
+            <label>Bandwidth (kHz):</label>
+            <input id="bw-display" type="number" value="20" step="1">
+          </div>
+          <input id="bw" type="range" min="0" max="100" value="43" step="1">
+        </div>
+        <div class="slider-row">
+          <div class="label-input-group">
+            <label>Dwell time (ns):</label>
+            <input id="dwell-display" type="number" value="100" step="10">
+          </div>
+          <input id="dwell" type="range" min="10" max="1000" value="100" step="10">
+        </div>
+        <div class="slider-row">
+          <div class="label-input-group">
+            <label>Line delay (μs):</label>
+            <input id="delay-display" type="number" value="0" step="0.1">
+          </div>
+          <input id="delay" type="range" min="0" max="100000" value="0" step="100">
+        </div>
+        <div class="slider-row">
+          <div class="label-input-group">
+            <label>Slew rate (FS/μs):</label>
+            <input id="slewRate-display" type="number" value="0.05" step="0.001">
+          </div>
+          <input id="slewRate" type="range" min="0" max="100" value="57" step="1">
+        </div>
+      </div>
+    </div>
+    
+    <!-- Plot at the top -->
+    <div class="plot-container">
+      <canvas id="plot" width="500" height="200"></canvas>
+      <div class="plot-legend">Red = Digital command; Blue = 1st line; Green = 2nd line; Orange = Last line</div>
+    </div>
+    
+    <!-- Secondary controls -->
+    <div class="secondary-controls">
+      <div class="control-row">
+        <label>Resolution:</label>
+        <select id="resolution">
+          <option value="128">128x128</option>
+          <option value="256" selected>256x256</option>
+          <option value="512">512x512</option>
+          <option value="1024">1024x1024</option>
+        </select>
+      </div>
+      <div class="control-row">
+        <label>Pattern:</label>
+        <select id="pattern">
+          <option value="zone" selected>Zone Plate</option>
+          <option value="checker">Checkerboard</option>
+          <option value="gradx">Gradient X</option>
+          <option value="grady">Gradient Y</option>
+          <option value="ramp2d">2D Ramp</option>
+          <option value="slant">Slanted Edge</option>
+          <option value="chirp">Sine Chirp</option>
+          <option value="text">Text Banner</option>
+          <option value="dots">Random Dots</option>
+        </select>
+      </div>
+      <div class="control-row">
+        <label>View:</label>
+        <select id="viewMode">
+          <option value="normal" selected>Normal</option>
+          <option value="error">Displacement Heatmap</option>
+          <option value="difference">Difference</option>
+        </select>
+      </div>
+    </div>
+    
+    <h2>Scan Visualizer</h2>
+    
+    <!-- System limitations display -->
+    <div class="limitation-info">
+      <h3>System Limitations</h3>
+      <div id="limitationStatus">No limitations active</div>
+    </div>
   </div>
-  <div>
-    <label>Resolution:
-      <select id="resolution">
-        <option value="128">128x128</option>
-        <option value="256" selected>256x256</option>
-        <option value="512">512x512</option>
-        <option value="1024">1024x1024</option>
-      </select>
-    </label>
-  </div>
-  <div>
-    <label>Pattern:
-      <select id="pattern">
-        <option value="zone" selected>Zone Plate</option>
-        <option value="checker">Checkerboard</option>
-        <option value="gradx">Gradient X</option>
-        <option value="grady">Gradient Y</option>
-        <option value="ramp2d">2D Ramp</option>
-        <option value="slant">Slanted Edge</option>
-        <option value="chirp">Sine Chirp</option>
-        <option value="text">Text Banner</option>
-        <option value="dots">Random Dots</option>
-      </select>
-    </label>
-  </div>
-  <div>
-    <canvas id="ideal"></canvas>
-    <canvas id="sim"></canvas>
-  </div>
-  <canvas id="plot" width="500" height="200"></canvas>
-  <p style="text-align:center">Red = Digital command; Blue = 1st line; Green = 2nd line; Orange = Last line</p>
 
 <script>
 function drawPattern(ctx, type, w, h) {
@@ -109,12 +435,30 @@ function drawPattern(ctx, type, w, h) {
   }
 }
 
-function simulate(srcCtx, simCtx, dwellNs, delayNs, bwkHz){
+function simulate(srcCtx, simCtx, dwellNs, delayNs, bwkHz, slewRateUs){
   const w=srcCtx.canvas.width, h=srcCtx.canvas.height;
   const src=srcCtx.getImageData(0,0,w,h).data;
   let dst=simCtx.createImageData(w,h), d=dst.data;
-  let tau=1/(2*Math.PI*bwkHz*1000);
-  function step(xOut,xCmd,dt){return xOut+(xCmd-xOut)*(1-Math.exp(-dt/tau));}
+  
+  // Calculate time constants
+  let tau = 1/(2*Math.PI*bwkHz*1000);
+  let maxSlewRate = slewRateUs > 0 ? slewRateUs * 1e6 : Infinity; // FS/s (full-scale per second)
+  
+  function step(xOut, xCmd, dt) {
+    // First apply bandwidth limitation
+    let bwLimited = xOut + (xCmd - xOut) * (1 - Math.exp(-dt/tau));
+    
+    // Then apply slew rate limitation
+    if (slewRateUs > 0) {
+      let maxChange = maxSlewRate * dt;
+      let desiredChange = bwLimited - xOut;
+      let actualChange = Math.sign(desiredChange) * Math.min(Math.abs(desiredChange), maxChange);
+      return xOut + actualChange;
+    }
+    
+    return bwLimited;
+  }
+  
   let xOut=0; let recs=[[],[],[],[]]; // digital, line1, line2, last
   for(let j=0;j<h;j++){
     for(let i=0;i<w;i++){
@@ -148,10 +492,191 @@ function plot(canvas,recs){
     for(let i=0;i<n;i++){let x=scaleX(i),y=scaleY(Math.min(1,recs[k][i]));if(i==0)ctx.moveTo(x,y);else ctx.lineTo(x,y);}ctx.stroke();}
 }
 
+// Convert slider position to exponential slew rate value
+function sliderToSlewRate(sliderValue) {
+  // Map slider (0-100) to exponential range (0.001 to 1.0)
+  // Using exponential: 0.001 * (1000 ^ (sliderValue/100))
+  const minSlew = 0.001;
+  const maxSlew = 1.0;
+  const ratio = maxSlew / minSlew;
+  return minSlew * Math.pow(ratio, sliderValue / 100);
+}
+
+// Convert slew rate value to slider position
+function slewRateToSlider(slewRateValue) {
+  const minSlew = 0.001;
+  const maxSlew = 1.0;
+  const ratio = maxSlew / minSlew;
+  return 100 * (Math.log(slewRateValue / minSlew) / Math.log(ratio));
+}
+
+// Convert slider position to exponential bandwidth value
+function sliderToBandwidth(sliderValue) {
+  // Map slider (0-100) to exponential range (1 to 1000 kHz)
+  // Using exponential: 1 * (1000 ^ (sliderValue/100))
+  const minBw = 1;
+  const maxBw = 1000;
+  const ratio = maxBw / minBw;
+  return minBw * Math.pow(ratio, sliderValue / 100);
+}
+
+// Convert bandwidth value to slider position
+function bandwidthToSlider(bandwidthValue) {
+  const minBw = 1;
+  const maxBw = 1000;
+  const ratio = maxBw / minBw;
+  return 100 * (Math.log(bandwidthValue / minBw) / Math.log(ratio));
+}
+
+function calculateTiming(dwellNs, delayNs, resolution) {
+  // Calculate line time: (pixels per line * dwell time) + line delay
+  const lineTimeNs = (resolution * dwellNs) + delayNs;
+  const lineTimeMs = lineTimeNs / 1e6; // Convert to milliseconds
+  
+  // Calculate frame time: line time * number of lines
+  const frameTimeNs = lineTimeNs * resolution;
+  const frameTimeMs = frameTimeNs / 1e6; // Convert to milliseconds
+  
+  // Calculate frames per second
+  const fps = 1000 / frameTimeMs; // Convert ms to seconds and invert
+  
+  return {
+    lineTimeNs: lineTimeNs,
+    lineTimeMs: lineTimeMs,
+    frameTimeNs: frameTimeNs,
+    frameTimeMs: frameTimeMs,
+    fps: fps
+  };
+}
+
+function updateTimingDisplay(timing) {
+  document.getElementById('lineTime').textContent = `${timing.lineTimeMs.toFixed(3)} ms`;
+  document.getElementById('frameTime').textContent = `${timing.frameTimeMs.toFixed(3)} ms`;
+  document.getElementById('fps').textContent = `${timing.fps.toFixed(2)} fps`;
+}
+
+function calculateDisplacement(dwellNs, delayNs, bwkHz, slewRateUs, w, h) {
+  let tau = 1/(2*Math.PI*bwkHz*1000);
+  let maxSlewRate = slewRateUs > 0 ? slewRateUs * 1e6 : Infinity; // FS/s (full-scale per second)
+  
+  function step(xOut, xCmd, dt) {
+    // First apply bandwidth limitation
+    let bwLimited = xOut + (xCmd - xOut) * (1 - Math.exp(-dt/tau));
+    
+    // Then apply slew rate limitation
+    if (slewRateUs > 0) {
+      let maxChange = maxSlewRate * dt;
+      let desiredChange = bwLimited - xOut;
+      let actualChange = Math.sign(desiredChange) * Math.min(Math.abs(desiredChange), maxChange);
+      return xOut + actualChange;
+    }
+    
+    return bwLimited;
+  }
+  
+  let displacements = [];
+  let xOut = 0;
+  
+  for(let j = 0; j < h; j++) {
+    for(let i = 0; i < w; i++) {
+      let xCmd = i / (w - 1);
+      xOut = step(xOut, xCmd, dwellNs * 1e-9);
+      let displacement = Math.abs(xOut - xCmd);
+      displacements.push(displacement);
+    }
+    // flyback
+    xOut = step(xOut, 0, delayNs * 1e-9);
+  }
+  
+  return displacements;
+}
+
+function drawDisplacementHeatmap(ctx, displacements, w, h) {
+  ctx.clearRect(0,0,w,h);
+  let img = ctx.createImageData(w,h);
+  let d = img.data;
+  
+  let maxDisplacement = Math.max(...displacements);
+  
+  for(let y=0; y<h; y++) {
+    for(let x=0; x<w; x++) {
+      let i = (y*w+x)*4;
+      let displacement = displacements[y*w+x];
+      let intensity = displacement / maxDisplacement;
+      
+      // Color mapping: blue (low displacement) to red (high displacement)
+      if(intensity < 0.5) {
+        d[i] = 0; // R
+        d[i+1] = Math.floor(255 * intensity * 2); // G
+        d[i+2] = 255; // B
+      } else {
+        d[i] = Math.floor(255 * (intensity - 0.5) * 2); // R
+        d[i+1] = Math.floor(255 * (1 - intensity) * 2); // G
+        d[i+2] = 0; // B
+      }
+      d[i+3] = 255; // A
+    }
+  }
+  
+  ctx.putImageData(img,0,0);
+}
+
+function drawDifference(idealCtx, simCtx, w, h) {
+  const ideal = idealCtx.getImageData(0,0,w,h).data;
+  const sim = simCtx.getImageData(0,0,w,h).data;
+  
+  let img = simCtx.createImageData(w,h);
+  let d = img.data;
+  
+  for(let y=0; y<h; y++) {
+    for(let x=0; x<w; x++) {
+      let i = (y*w+x)*4;
+      let idealGray = (ideal[i] + ideal[i+1] + ideal[i+2]) / 3;
+      let simGray = (sim[i] + sim[i+1] + sim[i+2]) / 3;
+      let diff = Math.abs(idealGray - simGray);
+      
+      // Show difference as grayscale
+      d[i] = d[i+1] = d[i+2] = diff;
+      d[i+3] = 255;
+    }
+  }
+  
+  simCtx.putImageData(img,0,0);
+}
+
+function updateLimitationStatus(dwellNs, bwkHz, slewRateUs) {
+  const statusEl = document.getElementById('limitationStatus');
+  let limitations = [];
+  
+  // Calculate bandwidth limitation
+  const bwFreq = 1 / (2 * Math.PI * bwkHz * 1000);
+  const bwTimeConstant = bwFreq;
+  
+  // Calculate slew rate limitation
+  let slewRateText = '';
+  if (slewRateUs > 0) {
+    const maxSlewRate = slewRateUs * 1e6; // FS/s (full-scale per second)
+    const maxChangePerDwell = maxSlewRate * dwellNs * 1e-9;
+    slewRateText = `Slew rate: ${slewRateUs} FS/μs (max change per dwell: ${(maxChangePerDwell * 100).toFixed(2)}%)`;
+    limitations.push(slewRateText);
+  }
+  
+  // Bandwidth limitation
+  const bwText = `Bandwidth: ${bwkHz} kHz (τ = ${(bwTimeConstant * 1e9).toFixed(1)} ns)`;
+  limitations.push(bwText);
+  
+  if (limitations.length === 0) {
+    statusEl.textContent = 'No limitations active';
+  } else {
+    statusEl.innerHTML = limitations.join('<br>');
+  }
+}
+
 function runSimulation() {
-  const dwell=+document.getElementById("dwell").value;
-  const delay=+document.getElementById("delay").value;
-  const bw=+document.getElementById("bw").value;
+  const dwell=+document.getElementById("dwell-display").value;
+  const delay=+document.getElementById("delay-display").value * 1000; // Convert μs to ns
+  const bw=+document.getElementById("bw-display").value;
+  const slewRate=+document.getElementById("slewRate-display").value;
   const pat=document.getElementById("pattern").value;
   const resolution=+document.getElementById("resolution").value;
   
@@ -164,20 +689,162 @@ function runSimulation() {
   simCanvas.width = resolution;
   simCanvas.height = resolution;
   
+  // Set display size to be responsive - max 300px but maintain aspect ratio
+  const maxDisplaySize = 300;
+  const displaySize = Math.min(maxDisplaySize, resolution);
+  
+  idealCanvas.style.width = displaySize + 'px';
+  idealCanvas.style.height = displaySize + 'px';
+  simCanvas.style.width = displaySize + 'px';
+  simCanvas.style.height = displaySize + 'px';
+  
   const ideal=idealCanvas.getContext("2d");
   const sim=simCanvas.getContext("2d");
   drawPattern(ideal,pat,resolution,resolution);
-  const recs=simulate(ideal,sim,dwell,delay,bw);
+  const recs=simulate(ideal,sim,dwell,delay,bw,slewRate);
   plot(document.getElementById("plot"),recs);
+  
+  // Calculate and display timing information
+  const timing = calculateTiming(dwell, delay, resolution);
+  updateTimingDisplay(timing);
+  
+  // Update limitation status
+  updateLimitationStatus(dwell, bw, slewRate);
+  
+  // Apply view mode
+  const viewMode = document.getElementById("viewMode").value;
+  if (viewMode === "error") {
+    const displacements = calculateDisplacement(dwell, delay, bw, slewRate, resolution, resolution);
+    drawDisplacementHeatmap(sim, displacements, resolution, resolution);
+  } else if (viewMode === "difference") {
+    drawDifference(ideal, sim, resolution, resolution);
+  }
+}
+
+// Update display values when sliders change
+function updateDisplayValues() {
+  document.getElementById("bw-display").value = Math.round(sliderToBandwidth(+document.getElementById("bw").value));
+  document.getElementById("dwell-display").value = document.getElementById("dwell").value;
+  document.getElementById("delay-display").value = (+document.getElementById("delay").value / 1000).toFixed(1); // Convert ns to μs
+  document.getElementById("slewRate-display").value = sliderToSlewRate(+document.getElementById("slewRate").value).toFixed(3);
+}
+
+// Update sliders when number inputs change
+function updateSliderFromInput(sliderId, inputId, isSlewRate = false) {
+  const inputValue = parseFloat(document.getElementById(inputId).value);
+  const slider = document.getElementById(sliderId);
+  
+  if (isSlewRate) {
+    // For slew rate, convert input value to slider position
+    const sliderPos = slewRateToSlider(inputValue);
+    const clampedPos = Math.max(0, Math.min(100, sliderPos));
+    slider.value = clampedPos;
+  } else if (sliderId === "bw") {
+    // For bandwidth, convert input value to slider position using exponential scaling
+    const sliderPos = bandwidthToSlider(inputValue);
+    const clampedPos = Math.max(0, Math.min(100, sliderPos));
+    slider.value = clampedPos;
+  } else if (sliderId === "delay") {
+    // For delay, convert from μs to ns for slider comparison
+    const delayNs = inputValue * 1000;
+    const min = parseFloat(slider.min);
+    const max = parseFloat(slider.max);
+    if (delayNs >= min && delayNs <= max) {
+      slider.value = delayNs;
+    }
+    // If out of range, don't update slider but still allow the value
+  } else {
+    // For other controls, only update slider if value is within range
+    const min = parseFloat(slider.min);
+    const max = parseFloat(slider.max);
+    if (inputValue >= min && inputValue <= max) {
+      slider.value = inputValue;
+    }
+    // If out of range, don't update slider but still allow the value
+  }
 }
 
 // Auto-simulation on any parameter change
-document.getElementById("dwell").oninput = runSimulation;
-document.getElementById("delay").oninput = runSimulation;
-document.getElementById("bw").oninput = runSimulation;
+document.getElementById("dwell").oninput = function() {
+  updateDisplayValues();
+  runSimulation();
+};
+document.getElementById("delay").oninput = function() {
+  updateDisplayValues();
+  runSimulation();
+};
+document.getElementById("bw").oninput = function() {
+  updateDisplayValues();
+  runSimulation();
+};
+document.getElementById("slewRate").oninput = function() {
+  updateDisplayValues();
+  runSimulation();
+};
+
+// Handle number input changes
+document.getElementById("bw-display").oninput = function() {
+  updateSliderFromInput("bw", "bw-display");
+  runSimulation();
+};
+document.getElementById("dwell-display").oninput = function() {
+  updateSliderFromInput("dwell", "dwell-display");
+  runSimulation();
+};
+document.getElementById("delay-display").oninput = function() {
+  updateSliderFromInput("delay", "delay-display");
+  runSimulation();
+};
+document.getElementById("slewRate-display").oninput = function() {
+  updateSliderFromInput("slewRate", "slewRate-display", true);
+  runSimulation();
+};
+
 document.getElementById("pattern").onchange = runSimulation;
 document.getElementById("resolution").onchange = runSimulation;
+document.getElementById("viewMode").onchange = runSimulation;
+
+// Initialize display values and run simulation
+updateDisplayValues();
 runSimulation(); // Initial run with default values
+
+// Slider validation tests (run in console for debugging)
+function runSliderTests() {
+  console.log('🧪 Running Slider Validation Tests...\n');
+  
+  // Test bandwidth default
+  const bwSlider = document.getElementById("bw").value;
+  const bwDisplay = document.getElementById("bw-display").value;
+  const bwCalculated = Math.round(sliderToBandwidth(+bwSlider));
+  console.log(`Bandwidth: Slider ${bwSlider} → Display ${bwDisplay} → Calculated ${bwCalculated} kHz`);
+  
+  // Test slew rate default
+  const slewSlider = document.getElementById("slewRate").value;
+  const slewDisplay = document.getElementById("slewRate-display").value;
+  const slewCalculated = sliderToSlewRate(+slewSlider).toFixed(3);
+  console.log(`Slew Rate: Slider ${slewSlider} → Display ${slewDisplay} → Calculated ${slewCalculated} FS/μs`);
+  
+  // Test bidirectional conversion
+  const testBw = 20;
+  const testSlider = bandwidthToSlider(testBw);
+  const backToBw = Math.round(sliderToBandwidth(testSlider));
+  console.log(`Bidirectional: ${testBw} kHz → slider ${testSlider.toFixed(1)} → ${backToBw} kHz`);
+  
+  // Validate defaults
+  const bwCorrect = bwCalculated == 20;
+  const slewCorrect = Math.abs(parseFloat(slewCalculated) - 0.05) < 0.01;
+  
+  console.log(`\n📊 Validation Results:`);
+  console.log(`Bandwidth default correct: ${bwCorrect ? '✅' : '❌'}`);
+  console.log(`Slew rate default correct: ${slewCorrect ? '✅' : '❌'}`);
+  console.log(`All tests passed: ${bwCorrect && slewCorrect ? '✅' : '❌'}`);
+  
+  return bwCorrect && slewCorrect;
+}
+
+
+// Uncomment the line below to run tests automatically
+// runSliderTests();
 </script>
 </body>
 </html>
