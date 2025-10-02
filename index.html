@@ -39,6 +39,28 @@
       border-radius: 6px;
       font-size: 14px;
     }
+    input[type="range"] {
+      width: 120px;
+      margin: 0 8px;
+    }
+    .slider-container {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+    .slider-value {
+      min-width: 60px;
+      text-align: right;
+      font-weight: 500;
+    }
+    .slider-input {
+      width: 80px;
+      padding: 4px 8px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 14px;
+    }
     .visualization {
       display: flex;
       gap: 20px;
@@ -96,6 +118,19 @@
       font-weight: 600;
       color: #333;
     }
+    .limitation-info {
+      background: #f0f8ff;
+      border: 1px solid #b3d9ff;
+      border-radius: 6px;
+      padding: 12px;
+      margin: 15px 0;
+      font-size: 14px;
+    }
+    .limitation-info h3 {
+      margin: 0 0 8px 0;
+      color: #0066cc;
+      font-size: 16px;
+    }
   </style>
 </head>
 <body>
@@ -105,7 +140,18 @@
     <div class="controls">
       <label>Dwell time (ns): <input id="dwell" type="number" value="100"></label>
       <label>Line delay (ns): <input id="delay" type="number" value="0"></label>
-      <label>Bandwidth (kHz): <input id="bw" type="number" value="20"></label>
+      <div class="slider-container">
+        <label>Bandwidth (kHz):</label>
+        <input id="bw" type="range" min="0" max="100" value="43" step="1">
+        <span class="slider-value" id="bwValue">20</span>
+        <input id="bwInput" type="number" class="slider-input" value="20" step="1">
+      </div>
+      <div class="slider-container">
+        <label>Slew rate (FS/μs):</label>
+        <input id="slewRate" type="range" min="0" max="100" value="57" step="1">
+        <span class="slider-value" id="slewRateValue">0.050</span>
+        <input id="slewRateInput" type="number" class="slider-input" value="0.05" step="0.001">
+      </div>
       <label>Resolution:
         <select id="resolution">
           <option value="128">128x128</option>
@@ -134,6 +180,11 @@
           <option value="difference">Difference</option>
         </select>
       </label>
+    </div>
+
+    <div class="limitation-info">
+      <h3>System Limitations</h3>
+      <div id="limitationStatus">No limitations active</div>
     </div>
 
     <div class="visualization">
@@ -218,12 +269,30 @@ function drawPattern(ctx, type, w, h) {
   }
 }
 
-function simulate(srcCtx, simCtx, dwellNs, delayNs, bwkHz){
+function simulate(srcCtx, simCtx, dwellNs, delayNs, bwkHz, slewRateUs){
   const w=srcCtx.canvas.width, h=srcCtx.canvas.height;
   const src=srcCtx.getImageData(0,0,w,h).data;
   let dst=simCtx.createImageData(w,h), d=dst.data;
-  let tau=1/(2*Math.PI*bwkHz*1000);
-  function step(xOut,xCmd,dt){return xOut+(xCmd-xOut)*(1-Math.exp(-dt/tau));}
+  
+  // Calculate time constants
+  let tau = 1/(2*Math.PI*bwkHz*1000);
+  let maxSlewRate = slewRateUs > 0 ? slewRateUs * 1e6 : Infinity; // FS/s (full-scale per second)
+  
+  function step(xOut, xCmd, dt) {
+    // First apply bandwidth limitation
+    let bwLimited = xOut + (xCmd - xOut) * (1 - Math.exp(-dt/tau));
+    
+    // Then apply slew rate limitation
+    if (slewRateUs > 0) {
+      let maxChange = maxSlewRate * dt;
+      let desiredChange = bwLimited - xOut;
+      let actualChange = Math.sign(desiredChange) * Math.min(Math.abs(desiredChange), maxChange);
+      return xOut + actualChange;
+    }
+    
+    return bwLimited;
+  }
+  
   let xOut=0; let recs=[[],[],[],[]]; // digital, line1, line2, last
   for(let j=0;j<h;j++){
     for(let i=0;i<w;i++){
@@ -244,9 +313,20 @@ function simulate(srcCtx, simCtx, dwellNs, delayNs, bwkHz){
   return recs;
 }
 
-function calculateDisplacement(dwellNs, delayNs, bwkHz, w, h) {
+function calculateDisplacement(dwellNs, delayNs, bwkHz, slewRateUs, w, h) {
   let tau = 1/(2*Math.PI*bwkHz*1000);
-  function step(xOut, xCmd, dt) { return xOut + (xCmd - xOut) * (1 - Math.exp(-dt/tau)); }
+  let maxSlewRate = slewRateUs > 0 ? slewRateUs * 1e6 : Infinity; // FS/s (full-scale per second)
+  
+  function step(xOut, xCmd, dt) {
+    let bwLimited = xOut + (xCmd - xOut) * (1 - Math.exp(-dt/tau));
+    if (slewRateUs > 0) {
+      let maxChange = maxSlewRate * dt;
+      let desiredChange = bwLimited - xOut;
+      let actualChange = Math.sign(desiredChange) * Math.min(Math.abs(desiredChange), maxChange);
+      return xOut + actualChange;
+    }
+    return bwLimited;
+  }
   
   let displacements = [];
   let xOut = 0;
@@ -345,6 +425,34 @@ function updateTimingDisplay(timing) {
   document.getElementById('fps').textContent = `${timing.fps.toFixed(2)} fps`;
 }
 
+function updateLimitationStatus(dwellNs, bwkHz, slewRateUs) {
+  const statusEl = document.getElementById('limitationStatus');
+  let limitations = [];
+  
+  // Calculate bandwidth limitation
+  const bwFreq = 1 / (2 * Math.PI * bwkHz * 1000);
+  const bwTimeConstant = bwFreq;
+  
+  // Calculate slew rate limitation
+  let slewRateText = '';
+  if (slewRateUs > 0) {
+    const maxSlewRate = slewRateUs * 1e6; // FS/s (full-scale per second)
+    const maxChangePerDwell = maxSlewRate * dwellNs * 1e-9;
+    slewRateText = `Slew rate: ${slewRateUs} FS/μs (max change per dwell: ${(maxChangePerDwell * 100).toFixed(2)}%)`;
+    limitations.push(slewRateText);
+  }
+  
+  // Bandwidth limitation
+  const bwText = `Bandwidth: ${bwkHz} kHz (τ = ${(bwTimeConstant * 1e9).toFixed(1)} ns)`;
+  limitations.push(bwText);
+  
+  if (limitations.length === 0) {
+    statusEl.textContent = 'No limitations active';
+  } else {
+    statusEl.innerHTML = limitations.join('<br>');
+  }
+}
+
 
 function plot(canvas,recs){
   const ctx=canvas.getContext("2d");
@@ -362,7 +470,8 @@ function plot(canvas,recs){
 function runSimulation() {
   const dwell=+document.getElementById("dwell").value;
   const delay=+document.getElementById("delay").value;
-  const bw=+document.getElementById("bw").value;
+  const bw=+document.getElementById("bwInput").value;
+  const slewRate=+document.getElementById("slewRateInput").value;
   const pat=document.getElementById("pattern").value;
   const resolution=+document.getElementById("resolution").value;
   const viewMode=document.getElementById("viewMode").value;
@@ -380,29 +489,137 @@ function runSimulation() {
   const sim=simCanvas.getContext("2d");
   
   drawPattern(ideal,pat,resolution,resolution);
-  const recs=simulate(ideal,sim,dwell,delay,bw);
+  const recs=simulate(ideal,sim,dwell,delay,bw,slewRate);
   plot(document.getElementById("plot"),recs);
   
   // Calculate and display timing information
   const timing = calculateTiming(dwell, delay, resolution);
   updateTimingDisplay(timing);
   
+  // Update limitation status
+  updateLimitationStatus(dwell, bw, slewRate);
+  
   // Apply view mode
   if (viewMode === "error") {
-    const displacements = calculateDisplacement(dwell, delay, bw, resolution, resolution);
+    const displacements = calculateDisplacement(dwell, delay, bw, slewRate, resolution, resolution);
     drawDisplacementHeatmap(sim, displacements, resolution, resolution);
   } else if (viewMode === "difference") {
     drawDifference(ideal, sim, resolution, resolution);
   }
 }
 
+// Convert slider position to exponential slew rate value
+function sliderToSlewRate(sliderValue) {
+  // Map slider (0-100) to exponential range (0.001 to 1.0)
+  // Using exponential: 0.001 * (1000 ^ (sliderValue/100))
+  const minSlew = 0.001;
+  const maxSlew = 1.0;
+  const ratio = maxSlew / minSlew;
+  return minSlew * Math.pow(ratio, sliderValue / 100);
+}
+
+// Convert slew rate value to slider position
+function slewRateToSlider(slewRateValue) {
+  const minSlew = 0.001;
+  const maxSlew = 1.0;
+  const ratio = maxSlew / minSlew;
+  return 100 * (Math.log(slewRateValue / minSlew) / Math.log(ratio));
+}
+
+// Convert slider position to exponential bandwidth value
+function sliderToBandwidth(sliderValue) {
+  // Map slider (0-100) to exponential range (1 to 1000 kHz)
+  // Using exponential: 1 * (1000 ^ (sliderValue/100))
+  const minBw = 1;
+  const maxBw = 1000;
+  const ratio = maxBw / minBw;
+  return minBw * Math.pow(ratio, sliderValue / 100);
+}
+
+// Convert bandwidth value to slider position
+function bandwidthToSlider(bandwidthValue) {
+  const minBw = 1;
+  const maxBw = 1000;
+  const ratio = maxBw / minBw;
+  return 100 * (Math.log(bandwidthValue / minBw) / Math.log(ratio));
+}
+
+// Update slider value displays and input boxes
+function updateSliderValues() {
+  const bwSliderValue = document.getElementById("bw").value;
+  const slewRateSliderValue = document.getElementById("slewRate").value;
+  
+  // Convert exponential bandwidth slider value to actual bandwidth
+  const actualBandwidth = sliderToBandwidth(bwSliderValue);
+  document.getElementById("bwValue").textContent = Math.round(actualBandwidth);
+  document.getElementById("bwInput").value = Math.round(actualBandwidth);
+  
+  // Convert exponential slider value to actual slew rate
+  const actualSlewRate = sliderToSlewRate(slewRateSliderValue);
+  document.getElementById("slewRateValue").textContent = actualSlewRate.toFixed(3);
+  document.getElementById("slewRateInput").value = actualSlewRate.toFixed(3);
+}
+
+// Update slider from input box
+function updateSliderFromInput(sliderId, inputId) {
+  const inputValue = parseFloat(document.getElementById(inputId).value);
+  const slider = document.getElementById(sliderId);
+  
+  if (sliderId === "slewRate") {
+    // For slew rate, convert input value to slider position
+    const sliderPos = slewRateToSlider(inputValue);
+    const clampedPos = Math.max(0, Math.min(100, sliderPos));
+    slider.value = clampedPos;
+  } else if (sliderId === "bw") {
+    // For bandwidth, convert input value to slider position
+    const sliderPos = bandwidthToSlider(inputValue);
+    const clampedPos = Math.max(0, Math.min(100, sliderPos));
+    slider.value = clampedPos;
+  } else {
+    // For other controls, use linear mapping
+    const min = parseFloat(slider.min);
+    const max = parseFloat(slider.max);
+    const clampedValue = Math.max(min, Math.min(max, inputValue));
+    slider.value = clampedValue;
+  }
+  
+  // Update display values
+  updateSliderValues();
+}
+
 // Auto-simulation on any parameter change
 document.getElementById("dwell").oninput = runSimulation;
 document.getElementById("delay").oninput = runSimulation;
-document.getElementById("bw").oninput = runSimulation;
+
+// Bandwidth slider and input
+document.getElementById("bw").oninput = function() {
+  updateSliderValues();
+  runSimulation();
+};
+document.getElementById("bwInput").oninput = function() {
+  updateSliderFromInput("bw", "bwInput");
+  runSimulation();
+};
+
+// Slew rate slider and input
+document.getElementById("slewRate").oninput = function() {
+  updateSliderValues();
+  runSimulation();
+};
+document.getElementById("slewRateInput").oninput = function() {
+  updateSliderFromInput("slewRate", "slewRateInput");
+  runSimulation();
+};
+
 document.getElementById("pattern").onchange = runSimulation;
 document.getElementById("resolution").onchange = runSimulation;
 document.getElementById("viewMode").onchange = runSimulation;
+
+// Initialize slider values and run simulation
+// Set initial values before updating displays
+document.getElementById("bwInput").value = "20";
+document.getElementById("slewRateInput").value = "0.05";
+updateSliderValues();
 runSimulation(); // Initial run with default values
 </script>
 </body>
