@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Scan Visualizer</title>
+  <style>
+    body { font-family: sans-serif; background:#f5f5f5; padding:20px; }
+    canvas { border:1px solid #333; margin:10px; }
+    label { margin-right:10px; }
+  </style>
+</head>
+<body>
+  <h2>Scan Visualizer</h2>
+  <div>
+    <label>Dwell time (ns): <input id="dwell" type="number" value="10000"></label>
+    <label>Line delay (ns): <input id="delay" type="number" value="0"></label>
+    <label>Bandwidth (kHz): <input id="bw" type="number" value="20"></label>
+  </div>
+  <div>
+    <label>Pattern:
+      <select id="pattern">
+        <option value="checker">Checkerboard</option>
+        <option value="gradx">Gradient X</option>
+        <option value="grady">Gradient Y</option>
+        <option value="ramp2d">2D Ramp</option>
+        <option value="slant">Slanted Edge</option>
+        <option value="chirp">Sine Chirp</option>
+        <option value="zone">Zone Plate</option>
+        <option value="text">Text Banner</option>
+        <option value="dots">Random Dots</option>
+      </select>
+    </label>
+    <button id="simulate">Simulate</button>
+  </div>
+  <div>
+    <canvas id="ideal" width="256" height="256"></canvas>
+    <canvas id="sim" width="256" height="256"></canvas>
+  </div>
+  <canvas id="plot" width="500" height="200"></canvas>
+  <p style="text-align:center">Red = Digital command; Blue = 1st line; Green = 2nd line; Orange = Last line</p>
+
+<script>
+function drawPattern(ctx, type, w, h) {
+  ctx.clearRect(0,0,w,h);
+  if(type==="checker"){
+    let cell=16;
+    for(let y=0;y<h;y+=cell)
+      for(let x=0;x<w;x+=cell){
+        ctx.fillStyle=((x/cell+y/cell)%2)?"#000":"#fff";
+        ctx.fillRect(x,y,cell,cell);
+      }
+  } else if(type==="gradx"){
+    let g=ctx.createLinearGradient(0,0,w,0);
+    g.addColorStop(0,"black"); g.addColorStop(1,"white");
+    ctx.fillStyle=g; ctx.fillRect(0,0,w,h);
+  } else if(type==="grady"){
+    let g=ctx.createLinearGradient(0,0,0,h);
+    g.addColorStop(0,"black"); g.addColorStop(1,"white");
+    ctx.fillStyle=g; ctx.fillRect(0,0,w,h);
+  } else if(type==="ramp2d"){
+    let img=ctx.createImageData(w,h),d=img.data;
+    for(let y=0;y<h;y++)for(let x=0;x<w;x++){
+      let val=Math.floor(((x/w)+(y/h))/2*255);
+      let i=(y*w+x)*4; d[i]=d[i+1]=d[i+2]=val; d[i+3]=255;
+    }
+    ctx.putImageData(img,0,0);
+  } else if(type==="slant"){
+    ctx.fillStyle="black"; ctx.fillRect(0,0,w,h);
+    ctx.strokeStyle="white"; ctx.lineWidth=4;
+    ctx.beginPath(); ctx.moveTo(0,h*0.8); ctx.lineTo(w,h*0.2); ctx.stroke();
+  } else if(type==="chirp"){
+    let img=ctx.createImageData(w,h),d=img.data;
+    for(let y=0;y<h;y++)for(let x=0;x<w;x++){
+      let freq=0.5+5*(x/w);
+      let val=0.5+0.5*Math.sin(2*Math.PI*freq*y/h*20);
+      let g=Math.floor(val*255);
+      let i=(y*w+x)*4; d[i]=d[i+1]=d[i+2]=g; d[i+3]=255;
+    }
+    ctx.putImageData(img,0,0);
+  } else if(type==="zone"){
+    let img=ctx.createImageData(w,h),d=img.data;
+    for(let y=0;y<h;y++)for(let x=0;x<w;x++){
+      let dx=x-w/2, dy=y-h/2;
+      let r=Math.sqrt(dx*dx+dy*dy);
+      let val=0.5+0.5*Math.sin(r*r/200);
+      let g=Math.floor(val*255);
+      let i=(y*w+x)*4; d[i]=d[i+1]=d[i+2]=g; d[i+3]=255;
+    }
+    ctx.putImageData(img,0,0);
+  } else if(type==="text"){
+    ctx.fillStyle="black"; ctx.fillRect(0,0,w,h);
+    ctx.fillStyle="white"; ctx.font="30px sans-serif";
+    ctx.fillText("RESCAN TEST →",20,h/2);
+  } else if(type==="dots"){
+    ctx.fillStyle="white"; ctx.fillRect(0,0,w,h);
+    for(let i=0;i<2000;i++){
+      ctx.fillStyle=Math.random()<0.5?"black":"gray";
+      ctx.fillRect(Math.random()*w,Math.random()*h,1,1);
+    }
+  }
+}
+
+function simulate(srcCtx, simCtx, dwellNs, delayNs, bwkHz){
+  const w=srcCtx.canvas.width, h=srcCtx.canvas.height;
+  const src=srcCtx.getImageData(0,0,w,h).data;
+  let dst=simCtx.createImageData(w,h), d=dst.data;
+  let tau=1/(2*Math.PI*bwkHz*1000);
+  function step(xOut,xCmd,dt){return xOut+(xCmd-xOut)*(1-Math.exp(-dt/tau));}
+  let xOut=0; let recs=[[],[],[],[]]; // digital, line1, line2, last
+  for(let j=0;j<h;j++){
+    for(let i=0;i<w;i++){
+      let xCmd=i/(w-1);
+      xOut=step(xOut,xCmd,dwellNs*1e-9);
+      let srcX=Math.floor(xOut*w), srcY=j;
+      let di=(j*w+i)*4;
+      if(srcX>=0&&srcX<w){let si=(srcY*w+srcX)*4; d[di]=src[si]; d[di+1]=src[si+1]; d[di+2]=src[si+2]; d[di+3]=255;}
+      else{d[di]=d[di+1]=d[di+2]=0; d[di+3]=255;}
+      if(j===0){recs[0].push(xCmd);recs[1].push(xOut);}
+      if(j===1)recs[2].push(xOut);
+      if(j===h-1)recs[3].push(xOut);
+    }
+    // flyback
+    xOut=step(xOut,0,delayNs*1e-9);
+  }
+  simCtx.putImageData(dst,0,0);
+  return recs;
+}
+
+function plot(canvas,recs){
+  const ctx=canvas.getContext("2d");
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  const n=recs[0].length;
+  function scaleX(i){return 40+i/(n-1)*(canvas.width-50);}
+  function scaleY(val){return (canvas.height-20)-val*(canvas.height-40);}
+  ctx.strokeStyle="red";ctx.beginPath();
+  for(let i=0;i<n;i++){let x=scaleX(i),y=scaleY(Math.min(1,recs[0][i]));if(i==0)ctx.moveTo(x,y);else ctx.lineTo(x,y);}ctx.stroke();
+  let colors=["blue","green","orange"];
+  for(let k=1;k<=3;k++){ctx.strokeStyle=colors[k-1];ctx.beginPath();
+    for(let i=0;i<n;i++){let x=scaleX(i),y=scaleY(Math.min(1,recs[k][i]));if(i==0)ctx.moveTo(x,y);else ctx.lineTo(x,y);}ctx.stroke();}
+}
+
+function runSimulation() {
+  const dwell=+document.getElementById("dwell").value;
+  const delay=+document.getElementById("delay").value;
+  const bw=+document.getElementById("bw").value;
+  const pat=document.getElementById("pattern").value;
+  const ideal=document.getElementById("ideal").getContext("2d");
+  const sim=document.getElementById("sim").getContext("2d");
+  drawPattern(ideal,pat,256,256);
+  const recs=simulate(ideal,sim,dwell,delay,bw);
+  plot(document.getElementById("plot"),recs);
+}
+
+document.getElementById("simulate").onclick = runSimulation;
+document.getElementById("pattern").onchange = runSimulation;
+drawPattern(document.getElementById("ideal").getContext("2d"),"checker",256,256);
+</script>
+</body>
+</html>
