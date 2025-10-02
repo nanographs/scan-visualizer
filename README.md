@@ -5,7 +5,7 @@ A web-based tool for visualizing raster scanning effects with configurable param
 ## 🚀 Quick Start
 
 **Option 1: Run directly in browser (Recommended)**
-- Click [here](https://adammccombs.github.io/scan-visualizer-app/) to open the visualizer
+- Click [here](https://nanographs.github.io/scan-visualizer/) to open the visualizer
 - No installation required - runs entirely in your browser
 - Hosted on GitHub Pages for instant access
 
@@ -50,7 +50,7 @@ The simulation models a first-order system response:
 ## 🌐 GitHub Pages Hosting
 
 This project is automatically deployed to GitHub Pages:
-- **Live URL**: https://adammccombs.github.io/scan-visualizer-app/
+- **Live URL**: https://nanographs.github.io/scan-visualizer/
 - **Source**: The `index.html` file serves as the main entry point
 - **Deployment**: Automatic updates when code is pushed to the main branch
 - **No build process**: Pure HTML/CSS/JavaScript - works directly in browsers
