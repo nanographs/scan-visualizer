@@ -18,6 +18,10 @@
     <label>Bandwidth (kHz): <input id="bw" type="number" value="20"></label>
   </div>
   <div>
+    <label>Width (pixels): <input id="width" type="number" value="256" min="32" max="1024"></label>
+    <label>Height (pixels): <input id="height" type="number" value="256" min="32" max="1024"></label>
+  </div>
+  <div>
     <label>Pattern:
       <select id="pattern">
         <option value="checker">Checkerboard</option>
@@ -31,11 +35,10 @@
         <option value="dots">Random Dots</option>
       </select>
     </label>
-    <button id="simulate">Simulate</button>
   </div>
   <div>
-    <canvas id="ideal" width="256" height="256"></canvas>
-    <canvas id="sim" width="256" height="256"></canvas>
+    <canvas id="ideal"></canvas>
+    <canvas id="sim"></canvas>
   </div>
   <canvas id="plot" width="500" height="200"></canvas>
   <p style="text-align:center">Red = Digital command; Blue = 1st line; Green = 2nd line; Orange = Last line</p>
@@ -140,18 +143,38 @@ function plot(canvas,recs){
     for(let i=0;i<n;i++){let x=scaleX(i),y=scaleY(Math.min(1,recs[k][i]));if(i==0)ctx.moveTo(x,y);else ctx.lineTo(x,y);}ctx.stroke();}
 }
 
-document.getElementById("simulate").onclick=()=>{
+function runSimulation() {
   const dwell=+document.getElementById("dwell").value;
   const delay=+document.getElementById("delay").value;
   const bw=+document.getElementById("bw").value;
   const pat=document.getElementById("pattern").value;
-  const ideal=document.getElementById("ideal").getContext("2d");
-  const sim=document.getElementById("sim").getContext("2d");
-  drawPattern(ideal,pat,256,256);
+  const width=+document.getElementById("width").value;
+  const height=+document.getElementById("height").value;
+  
+  const idealCanvas=document.getElementById("ideal");
+  const simCanvas=document.getElementById("sim");
+  
+  // Set canvas dimensions
+  idealCanvas.width = width;
+  idealCanvas.height = height;
+  simCanvas.width = width;
+  simCanvas.height = height;
+  
+  const ideal=idealCanvas.getContext("2d");
+  const sim=simCanvas.getContext("2d");
+  drawPattern(ideal,pat,width,height);
   const recs=simulate(ideal,sim,dwell,delay,bw);
   plot(document.getElementById("plot"),recs);
-};
-drawPattern(document.getElementById("ideal").getContext("2d"),"checker",256,256);
+}
+
+// Auto-simulation on any parameter change
+document.getElementById("dwell").oninput = runSimulation;
+document.getElementById("delay").oninput = runSimulation;
+document.getElementById("bw").oninput = runSimulation;
+document.getElementById("pattern").onchange = runSimulation;
+document.getElementById("width").oninput = runSimulation;
+document.getElementById("height").oninput = runSimulation;
+runSimulation(); // Initial run with default values
 </script>
 </body>
 </html>
