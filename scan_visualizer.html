@@ -17,8 +17,14 @@
     <label>Bandwidth (kHz): <input id="bw" type="number" value="20"></label>
   </div>
   <div>
-    <label>Width (pixels): <input id="width" type="number" value="256" min="32" max="1024"></label>
-    <label>Height (pixels): <input id="height" type="number" value="256" min="32" max="1024"></label>
+    <label>Resolution:
+      <select id="resolution">
+        <option value="128">128x128</option>
+        <option value="256" selected>256x256</option>
+        <option value="512">512x512</option>
+        <option value="1024">1024x1024</option>
+      </select>
+    </label>
   </div>
   <div>
     <label>Pattern:
@@ -147,21 +153,20 @@ function runSimulation() {
   const delay=+document.getElementById("delay").value;
   const bw=+document.getElementById("bw").value;
   const pat=document.getElementById("pattern").value;
-  const width=+document.getElementById("width").value;
-  const height=+document.getElementById("height").value;
+  const resolution=+document.getElementById("resolution").value;
   
   const idealCanvas=document.getElementById("ideal");
   const simCanvas=document.getElementById("sim");
   
-  // Set canvas dimensions
-  idealCanvas.width = width;
-  idealCanvas.height = height;
-  simCanvas.width = width;
-  simCanvas.height = height;
+  // Set canvas dimensions (square resolution)
+  idealCanvas.width = resolution;
+  idealCanvas.height = resolution;
+  simCanvas.width = resolution;
+  simCanvas.height = resolution;
   
   const ideal=idealCanvas.getContext("2d");
   const sim=simCanvas.getContext("2d");
-  drawPattern(ideal,pat,width,height);
+  drawPattern(ideal,pat,resolution,resolution);
   const recs=simulate(ideal,sim,dwell,delay,bw);
   plot(document.getElementById("plot"),recs);
 }
@@ -171,8 +176,7 @@ document.getElementById("dwell").oninput = runSimulation;
 document.getElementById("delay").oninput = runSimulation;
 document.getElementById("bw").oninput = runSimulation;
 document.getElementById("pattern").onchange = runSimulation;
-document.getElementById("width").oninput = runSimulation;
-document.getElementById("height").oninput = runSimulation;
+document.getElementById("resolution").onchange = runSimulation;
 runSimulation(); // Initial run with default values
 </script>
 </body>
