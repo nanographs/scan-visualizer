@@ -1,32 +1,45 @@
 # Test Images for Scan Visualizer
 
-This folder contains SCM (Scanning Capacitance Microscopy) test images that can be used as patterns in the Scan Visualizer.
+This folder contains SEM (Scanning Electron Microscopy) test images that can be used as patterns in the Scan Visualizer.
+
+## Current Images (6 total)
+
+1. **Octo_1_10kV 2024-07-14_16-16-32.jpeg** - Octo 16:16 (default pattern)
+2. **Octo_1_10kV 2024-07-14_16-20-04.jpeg** - Octo 16:20
+3. **Edge of the eye no artifacts 2k.jpeg** - Eye Edge 2k
+4. **2b pilot00099 (1).jpeg** - Pilot 00099
+5. **saved2024-04-06_18-52-04_8bit.jpeg** - Saved 8bit
+6. **messed it up a bit but ya know.jpeg** - Messed Up
 
 ## Image Requirements
 
-- **Format**: JPG, PNG, or other web-compatible formats
-- **Aspect Ratio**: Images should have a scale bar at the bottom, making them non-square
-- **Naming**: Use descriptive names like `image1.jpg`, `image2.jpg`, etc.
-- **Content**: SCM images that show slow scan data (no scan distortion)
+- **Format**: JPEG, PNG, or other web-compatible formats
+- **Aspect Ratio**: Images with scale bars (non-square) are supported
+- **Naming**: Any filename works - define display name in patterns array
+- **Content**: SEM/microscopy images that show slow scan data (no scan distortion)
 
 ## How It Works
 
-- Images are loaded as pattern options in the pattern gallery
-- Horizontal resolution = selected resolution slider value
-- Vertical resolution = scaled to maintain aspect ratio
-- Images are cached for performance
-- Any remaining space at the bottom is filled with black
+1. **Image Loading**: Images are loaded via fetch and converted to data URLs
+2. **Pixel Data Extraction**: Raw pixel data is extracted and cached immediately
+3. **Pattern Drawing**: Images are drawn using cached pixel data (CORS-safe)
+4. **Simulation**: Images work identically to generated patterns
+5. **Aspect Ratio**: Horizontal = resolution slider, Vertical = scaled to maintain ratio
+6. **Performance**: Images are cached for instant switching
 
 ## Adding New Images
 
-1. Add your image files to this folder
-2. Update the `patterns` array in `index.html` to include your new images
-3. Follow the naming convention: `{id: 'imageN', name: 'SCM Image N', type: 'image', src: 'test_images/imageN.jpg'}`
+1. Add your image file(s) to this folder
+2. Update the `patterns` array in `index.html`:
+   ```javascript
+   { id: 'imageN', name: 'Your Image Name', type: 'image', src: 'test_images/your_image.jpeg' }
+   ```
+3. Place new images at the top of the patterns array (images appear first)
+4. Refresh the page - images will load automatically
 
-## Example Images
+## Technical Details
 
-Place your SCM test images here. The system will automatically:
-- Scale them to the selected resolution
-- Maintain aspect ratio
-- Handle loading errors gracefully
-- Cache images for performance
+- **Requires HTTP Server**: Local development needs `python3 -m http.server 8000`
+- **CORS-Safe**: Works on GitHub Pages without any issues
+- **Unified Pipeline**: Images use the same simulation code as generated patterns
+- **No Special Cases**: Image patterns are converted to pixel data early in the pipeline
