@@ -92,9 +92,11 @@ The Scan Visualizer is a web-based tool for simulating scanning microscopy syste
 
 ### 5. Resolution Control
 - **Element ID**: `resolution`
-- **Options**: 128, 256, 512, 1024 (power-of-two)
-- **Default**: 256
+- **Type**: Discrete slider with tick marks
+- **Options**: 128, 256, 512, 1024, 4096 (power-of-two)
+- **Default**: 256 (slider position 1)
 - **Impact**: Affects canvas dimensions and timing calculations
+- **Display**: Shows current resolution in "256x256" format
 
 ### 6. Pattern Gallery
 - **Element ID**: `patternGallery`

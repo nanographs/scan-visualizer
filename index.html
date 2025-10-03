@@ -486,12 +486,13 @@
           <input id="resolution-display" type="text" value="256x256" readonly>
         </div>
         <div class="resolution-slider-container">
-          <input id="resolution" type="range" min="0" max="3" value="1" step="1">
+          <input id="resolution" type="range" min="0" max="4" value="1" step="1">
           <div class="resolution-ticks">
             <span class="tick">128</span>
             <span class="tick">256</span>
             <span class="tick">512</span>
             <span class="tick">1024</span>
+            <span class="tick">4096</span>
           </div>
         </div>
       </div>
@@ -539,8 +540,12 @@ let selectedPattern = 'zone';
 
 function drawPattern(ctx, type, w, h) {
   ctx.clearRect(0,0,w,h);
+  
+  // Calculate scaling factor based on resolution (256 is baseline)
+  const scaleFactor = Math.min(w, h) / 256;
+  
   if(type==="checker"){
-    let cell=16;
+    let cell = Math.max(4, Math.round(16 * scaleFactor)); // Scale cell size, minimum 4px
     for(let y=0;y<h;y+=cell)
       for(let x=0;x<w;x+=cell){
         ctx.fillStyle=((x/cell+y/cell)%2)?"#000":"#fff";
@@ -563,13 +568,13 @@ function drawPattern(ctx, type, w, h) {
     ctx.putImageData(img,0,0);
   } else if(type==="slant"){
     ctx.fillStyle="black"; ctx.fillRect(0,0,w,h);
-    ctx.strokeStyle="white"; ctx.lineWidth=4;
+    ctx.strokeStyle="white"; ctx.lineWidth=Math.max(2, Math.round(4 * scaleFactor));
     ctx.beginPath(); ctx.moveTo(0,h*0.8); ctx.lineTo(w,h*0.2); ctx.stroke();
   } else if(type==="chirp"){
     let img=ctx.createImageData(w,h),d=img.data;
     for(let y=0;y<h;y++)for(let x=0;x<w;x++){
       let freq=0.5+5*(x/w);
-      let val=0.5+0.5*Math.sin(2*Math.PI*freq*y/h*20);
+      let val=0.5+0.5*Math.sin(2*Math.PI*freq*y/h*20*scaleFactor);
       let g=Math.floor(val*255);
       let i=(y*w+x)*4; d[i]=d[i+1]=d[i+2]=g; d[i+3]=255;
     }
@@ -579,18 +584,20 @@ function drawPattern(ctx, type, w, h) {
     for(let y=0;y<h;y++)for(let x=0;x<w;x++){
       let dx=x-w/2, dy=y-h/2;
       let r=Math.sqrt(dx*dx+dy*dy);
-      let val=0.5+0.5*Math.sin(r*r/200);
+      let val=0.5+0.5*Math.sin(r*r/(200*scaleFactor*scaleFactor));
       let g=Math.floor(val*255);
       let i=(y*w+x)*4; d[i]=d[i+1]=d[i+2]=g; d[i+3]=255;
     }
     ctx.putImageData(img,0,0);
   } else if(type==="text"){
     ctx.fillStyle="black"; ctx.fillRect(0,0,w,h);
-    ctx.fillStyle="white"; ctx.font="30px sans-serif";
-    ctx.fillText("RESCAN TEST →",20,h/2);
+    ctx.fillStyle="white"; 
+    ctx.font=Math.max(12, Math.round(30 * scaleFactor)) + "px sans-serif";
+    ctx.fillText("RESCAN TEST →", Math.round(20 * scaleFactor), h/2);
   } else if(type==="dots"){
     ctx.fillStyle="white"; ctx.fillRect(0,0,w,h);
-    for(let i=0;i<2000;i++){
+    let numDots = Math.round(2000 * scaleFactor * scaleFactor);
+    for(let i=0;i<numDots;i++){
       ctx.fillStyle=Math.random()<0.5?"black":"gray";
       ctx.fillRect(Math.random()*w,Math.random()*h,1,1);
     }
@@ -840,7 +847,7 @@ function runSimulation() {
   const bw=+document.getElementById("bw-display").value;
   const slewRate=+document.getElementById("slewRate-display").value;
   const pat=selectedPattern;
-  const resolutionValues = [128, 256, 512, 1024];
+  const resolutionValues = [128, 256, 512, 1024, 4096];
   const resolutionSliderValue = parseInt(document.getElementById("resolution").value);
   const resolution = resolutionValues[resolutionSliderValue];
   
@@ -893,7 +900,7 @@ function updateDisplayValues() {
 }
 
 function updateResolutionDisplay() {
-  const resolutionValues = [128, 256, 512, 1024];
+  const resolutionValues = [128, 256, 512, 1024, 4096];
   const sliderValue = parseInt(document.getElementById("resolution").value);
   const resolution = resolutionValues[sliderValue];
   document.getElementById("resolution-display").value = `${resolution}x${resolution}`;
