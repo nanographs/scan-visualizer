@@ -8,7 +8,15 @@ The Scan Visualizer is a web-based tool for simulating scanning microscopy syste
 ### HTML Structure
 ```html
 <div class="container">
-  <!-- Images at top with vertical labels -->
+  <!-- Pattern Gallery at the very top -->
+  <div class="pattern-section">
+    <h3>Select Pattern:</h3>
+    <div class="pattern-gallery" id="patternGallery">
+      <!-- Pattern thumbnails generated dynamically -->
+    </div>
+  </div>
+  
+  <!-- Images with vertical labels -->
   <div class="images-container">
     <div class="image-wrapper">
       <div class="image-label">Ideal Pattern</div>
@@ -92,11 +100,15 @@ The Scan Visualizer is a web-based tool for simulating scanning microscopy syste
 - **Default**: 256
 - **Impact**: Affects canvas dimensions and timing calculations
 
-### 6. Pattern Control
-- **Element ID**: `pattern`
+### 6. Pattern Gallery
+- **Element ID**: `patternGallery`
+- **Type**: Visual thumbnail gallery (replaces dropdown)
 - **Options**: zone, checker, gradx, grady, ramp2d, slant, chirp, text, dots
 - **Default**: zone (Zone Plate)
-- **Function**: `drawPattern(ctx, type, w, h)`
+- **Desktop**: Square thumbnails (80px min, aspect-ratio: 1)
+- **Mobile**: Compact rectangular (50x40px)
+- **Functions**: `createPatternThumbnail()`, `selectPattern()`, `initializePatternGallery()`
+- **Visual Feedback**: Hover effects, selection highlighting
 
 ### 7. View Mode Control
 - **Element ID**: `viewMode`
@@ -189,21 +201,23 @@ document.getElementById("viewMode").onchange = runSimulation;
 ## Current Layout Order (Updated)
 
 ### Visual Hierarchy
-1. **Images with vertical labels** (at the very top)
-2. **Timing information** (line time, frame time, FPS)
-3. **Main controls/sliders** (bandwidth, dwell time, line delay, slew rate)
-4. **Plot with beam position traces** (red, blue, green, orange lines)
-5. **Secondary controls** (resolution, pattern, view mode)
-6. **"Scan Visualizer" heading**
-7. **System limitations display**
+1. **Pattern Gallery** (visual pattern selection at the very top)
+2. **Images with vertical labels** (ideal pattern and simulated scan)
+3. **Timing information** (line time, frame time, FPS)
+4. **Main controls/sliders** (bandwidth, dwell time, line delay, slew rate)
+5. **Plot with beam position traces** (red, blue, green, orange lines)
+6. **Secondary controls** (resolution, view mode)
+7. **"Scan Visualizer" heading**
+8. **System limitations display**
 
 ### Layout Rationale
-- **Images at top**: Immediate visual feedback
-- **Main controls next**: Primary parameters for thumb access
+- **Pattern gallery at top**: Visual pattern selection for immediate feedback
+- **Images next**: Show selected pattern and simulation results
+- **Main controls**: Primary parameters for thumb access
 - **Plot prominent**: Shows effects of parameter changes
-- **Secondary controls**: Less frequently changed settings
+- **Secondary controls**: Less frequently changed settings (resolution, view mode)
 - **Heading and info**: Contextual information
-- **Timing at bottom**: Performance metrics
+- **System limitations**: Performance metrics and constraints
 
 ## CSS Architecture
 
@@ -214,6 +228,10 @@ document.getElementById("viewMode").onchange = runSimulation;
 - **Mobile**: Stacked layout with touch-friendly controls
 
 ### Key CSS Classes
+- `.pattern-section`: Pattern gallery container with header
+- `.pattern-gallery`: Grid layout for pattern thumbnails
+- `.pattern-thumbnail`: Individual pattern thumbnail with hover effects
+- `.pattern-label`: Pattern name overlay on thumbnails
 - `.images-container`: Flexbox for image layout
 - `.image-wrapper`: Individual image container
 - `.image-label`: Vertical text labels
@@ -229,6 +247,7 @@ document.getElementById("viewMode").onchange = runSimulation;
 - **Mobile** (max-width: 768px): Compact layout with optimized spacing
 
 ### Mobile Layout Optimizations
+- **Pattern Gallery**: Compact rectangular thumbnails (50x40px) with 6px gaps
 - **Compact Sliders**: Row layout with smaller fonts and reduced padding
 - **Smaller Inputs**: 50px width number inputs with 12px font
 - **Reduced Spacing**: 8px margins between controls, 5px gaps
@@ -252,10 +271,14 @@ document.getElementById("viewMode").onchange = runSimulation;
 - `updateDisplayValues()` - Slider to input sync
 - `updateSliderFromInput()` - Input to slider sync
 - `runSimulation()` - Main simulation orchestrator
+- `createPatternThumbnail()` - Generate pattern thumbnail
+- `selectPattern()` - Handle pattern selection
+- `initializePatternGallery()` - Initialize pattern gallery
 
 ### HTML Elements (Must Preserve)
 - Canvas elements: `ideal`, `sim`, `plot`
 - Control elements: All input and select elements
+- Pattern gallery: `patternGallery` container
 - Display elements: Timing and limitation status elements
 
 ### CSS Classes (Must Preserve)
