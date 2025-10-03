@@ -143,7 +143,7 @@
     .pattern-gallery {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
-      gap: 10px;
+      gap: 12px;
       margin: 10px 0;
       max-width: 100%;
     }
@@ -156,6 +156,7 @@
       overflow: hidden;
       transition: all 0.2s ease;
       background: white;
+      aspect-ratio: 1;
     }
     
     .pattern-thumbnail:hover {
@@ -170,9 +171,10 @@
     
     .pattern-thumbnail canvas {
       width: 100%;
-      height: 60px;
+      height: 100%;
       display: block;
       border: none;
+      object-fit: cover;
     }
     
     .pattern-label {
@@ -203,6 +205,20 @@
       margin: 10px 0;
       font-size: 12px;
       color: #666;
+    }
+    
+    .pattern-section {
+      margin: 20px 0;
+      padding: 15px;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .pattern-section h3 {
+      margin: 0 0 8px 0;
+      color: #333;
+      font-size: 14px;
     }
     
     .timing-info {
@@ -315,24 +331,42 @@
       }
       
       .pattern-gallery {
-        grid-template-columns: repeat(auto-fit, minmax(60px, 1fr));
-        gap: 8px;
+        grid-template-columns: repeat(auto-fit, minmax(50px, 1fr));
+        gap: 6px;
       }
       
       .pattern-thumbnail canvas {
-        height: 50px;
+        height: 40px;
       }
       
       .pattern-label {
-        font-size: 9px;
+        font-size: 8px;
         padding: 1px;
+      }
+      
+      .pattern-section {
+        padding: 10px;
+        margin: 10px 0;
+      }
+      
+      .pattern-section h3 {
+        font-size: 12px;
+        margin-bottom: 6px;
       }
     }
   </style>
 </head>
 <body>
   <div class="container">
-    <!-- Images at the top -->
+    <!-- Pattern Gallery at the very top -->
+    <div class="pattern-section">
+      <h3>Select Pattern:</h3>
+      <div class="pattern-gallery" id="patternGallery">
+        <!-- Pattern thumbnails will be generated here -->
+      </div>
+    </div>
+    
+    <!-- Images -->
     <div class="images-container">
       <div class="image-wrapper">
         <div class="image-label">Ideal Pattern</div>
@@ -403,12 +437,6 @@
           <option value="512">512x512</option>
           <option value="1024">1024x1024</option>
         </select>
-      </div>
-      <div class="control-row">
-        <label>Pattern:</label>
-        <div class="pattern-gallery" id="patternGallery">
-          <!-- Pattern thumbnails will be generated here -->
-        </div>
       </div>
       <div class="control-row">
         <label>View:</label>
@@ -842,10 +870,10 @@ function createPatternThumbnail(pattern) {
   
   const canvas = document.createElement('canvas');
   canvas.width = 80;
-  canvas.height = 60;
+  canvas.height = 80;
   
   const ctx = canvas.getContext('2d');
-  drawPattern(ctx, pattern.id, 80, 60);
+  drawPattern(ctx, pattern.id, 80, 80);
   
   const label = document.createElement('div');
   label.className = 'pattern-label';
