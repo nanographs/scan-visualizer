@@ -109,6 +109,53 @@
       order: 2;
     }
     
+    /* Resolution slider with discrete ticks */
+    .resolution-slider-container {
+      position: relative;
+      flex: 1;
+      min-width: 150px;
+      padding: 0 12px; /* Compensate for thumb width (24px/2 = 12px) */
+    }
+    
+    #resolution {
+      width: 100%;
+      margin-bottom: 20px;
+      margin: 0 -12px; /* Counteract container padding for full width */
+      width: calc(100% + 24px); /* Extend beyond padding */
+    }
+    
+    .resolution-ticks {
+      position: absolute;
+      top: 20px;
+      left: 12px; /* Align with thumb center */
+      right: 12px; /* Align with thumb center */
+      display: flex;
+      justify-content: space-between;
+      font-size: 10px;
+      color: #666;
+    }
+    
+    .resolution-ticks .tick {
+      position: relative;
+      text-align: center;
+      width: 0; /* Allow flex to handle spacing */
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      transform: translateX(-50%); /* Center the text under the tick mark */
+    }
+    
+    .resolution-ticks .tick::before {
+      content: '';
+      position: absolute;
+      top: -8px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 1px;
+      height: 6px;
+      background: #666;
+    }
+    
     .secondary-controls {
       display: flex;
       flex-direction: column;
@@ -354,6 +401,17 @@
         font-size: 12px;
         margin-bottom: 6px;
       }
+      
+      /* Mobile resolution display styling */
+      #resolution-display {
+        width: 60px !important;
+        font-size: 10px;
+        padding: 2px 4px;
+      }
+      
+      .resolution-slider-container {
+        min-width: 100px;
+      }
     }
   </style>
 </head>
@@ -422,14 +480,20 @@
       </div>
       
       <!-- Additional controls moved from secondary -->
-      <div class="control-row">
-        <label>Resolution:</label>
-        <select id="resolution">
-          <option value="128">128x128</option>
-          <option value="256" selected>256x256</option>
-          <option value="512">512x512</option>
-          <option value="1024">1024x1024</option>
-        </select>
+      <div class="slider-row">
+        <div class="label-input-group">
+          <label>Resolution:</label>
+          <input id="resolution-display" type="text" value="256x256" readonly>
+        </div>
+        <div class="resolution-slider-container">
+          <input id="resolution" type="range" min="0" max="3" value="1" step="1">
+          <div class="resolution-ticks">
+            <span class="tick">128</span>
+            <span class="tick">256</span>
+            <span class="tick">512</span>
+            <span class="tick">1024</span>
+          </div>
+        </div>
       </div>
       <div class="control-row">
         <label>View:</label>
@@ -776,7 +840,9 @@ function runSimulation() {
   const bw=+document.getElementById("bw-display").value;
   const slewRate=+document.getElementById("slewRate-display").value;
   const pat=selectedPattern;
-  const resolution=+document.getElementById("resolution").value;
+  const resolutionValues = [128, 256, 512, 1024];
+  const resolutionSliderValue = parseInt(document.getElementById("resolution").value);
+  const resolution = resolutionValues[resolutionSliderValue];
   
   const idealCanvas=document.getElementById("ideal");
   const simCanvas=document.getElementById("sim");
@@ -787,9 +853,8 @@ function runSimulation() {
   simCanvas.width = resolution;
   simCanvas.height = resolution;
   
-  // Set display size to be responsive - max 300px but maintain aspect ratio
-  const maxDisplaySize = 300;
-  const displaySize = Math.min(maxDisplaySize, resolution);
+  // Set display size to be constant to prevent UI jumping
+  const displaySize = 300; // Fixed display size regardless of resolution
   
   idealCanvas.style.width = displaySize + 'px';
   idealCanvas.style.height = displaySize + 'px';
@@ -825,6 +890,13 @@ function updateDisplayValues() {
   document.getElementById("dwell-display").value = document.getElementById("dwell").value;
   document.getElementById("delay-display").value = (+document.getElementById("delay").value / 1000).toFixed(1); // Convert ns to μs
   document.getElementById("slewRate-display").value = sliderToSlewRate(+document.getElementById("slewRate").value).toFixed(3);
+}
+
+function updateResolutionDisplay() {
+  const resolutionValues = [128, 256, 512, 1024];
+  const sliderValue = parseInt(document.getElementById("resolution").value);
+  const resolution = resolutionValues[sliderValue];
+  document.getElementById("resolution-display").value = `${resolution}x${resolution}`;
 }
 
 // Update sliders when number inputs change
@@ -934,6 +1006,11 @@ document.getElementById("slewRate").oninput = function() {
   runSimulation();
 };
 
+document.getElementById("resolution").oninput = function() {
+  updateResolutionDisplay();
+  runSimulation();
+};
+
 // Handle number input changes
 document.getElementById("bw-display").oninput = function() {
   updateSliderFromInput("bw", "bw-display");
@@ -952,12 +1029,12 @@ document.getElementById("slewRate-display").oninput = function() {
   runSimulation();
 };
 
-document.getElementById("resolution").onchange = runSimulation;
 document.getElementById("viewMode").onchange = runSimulation;
 
 // Initialize pattern gallery and run simulation
 initializePatternGallery();
 updateDisplayValues();
+updateResolutionDisplay();
 runSimulation(); // Initial run with default values
 
 // Slider validation tests (run in console for debugging)
