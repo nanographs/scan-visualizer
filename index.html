@@ -492,7 +492,7 @@
             <span class="tick">256</span>
             <span class="tick">512</span>
             <span class="tick">1024</span>
-            <span class="tick">4096</span>
+            <span class="tick">2048</span>
           </div>
         </div>
       </div>
@@ -525,6 +525,9 @@
 <script>
 // Pattern definitions
 const patterns = [
+  // Image patterns first
+  { id: 'image1', name: 'SEM Image 1', type: 'image', src: 'test_images/Octo_1_10kV 2024-07-14_16-16-32.jpeg' },
+  // Generated patterns
   { id: 'zone', name: 'Zone Plate' },
   { id: 'checker', name: 'Checkerboard' },
   { id: 'gradx', name: 'Gradient X' },
@@ -536,10 +539,78 @@ const patterns = [
   { id: 'dots', name: 'Random Dots' }
 ];
 
-let selectedPattern = 'zone';
+let selectedPattern = 'image1';
+
+// Image cache for loaded images
+const imageCache = new Map();
+
+// Image data cache for extracted pixel data (CORS-safe)
+const imageDataCache = new Map();
+
+// Preload all images on page load and extract pixel data
+function preloadImages() {
+  const imagePatterns = patterns.filter(p => p.type === 'image');
+  
+  imagePatterns.forEach(pattern => {
+    // Create image directly from source path
+    const img = new Image();
+    
+    img.onload = function() {
+      imageCache.set(pattern.src, img);
+      console.log(`Preloaded image: ${pattern.name} (${img.width}x${img.height})`);
+      
+      // Extract pixel data immediately and cache it
+      const tempCanvas = document.createElement('canvas');
+      const tempCtx = tempCanvas.getContext('2d');
+      tempCanvas.width = img.width;
+      tempCanvas.height = img.height;
+      
+      // Draw image to temporary canvas
+      tempCtx.drawImage(img, 0, 0);
+      
+      try {
+        // Extract pixel data - this should work for same-origin images
+        const imageData = tempCtx.getImageData(0, 0, img.width, img.height);
+        imageDataCache.set(pattern.src, {
+          data: imageData.data,
+          width: img.width,
+          height: img.height
+        });
+        console.log(`Extracted pixel data for: ${pattern.name} (${imageData.data.length} bytes)`);
+        
+        // Update the thumbnail for this image pattern
+        updateImageThumbnail(pattern.id);
+        
+        // If this is the first image pattern and no pattern is selected yet, select it
+        if (pattern.id === 'image1' && selectedPattern === 'image1') {
+          // Trigger a re-render now that the image data is loaded
+          runSimulation();
+        }
+      } catch (e) {
+        console.error(`Failed to extract pixel data for: ${pattern.name}`, e);
+        console.warn(`⚠️  CORS Error: To use image patterns locally, serve this page via HTTP (e.g., 'python3 -m http.server 8000')`);
+        console.warn(`   Image patterns will work correctly when deployed to GitHub Pages.`);
+      }
+    };
+    
+    img.onerror = function() {
+      console.error(`Failed to load image: ${pattern.src}`);
+    };
+    
+    // Load the image directly
+    img.src = pattern.src;
+  });
+}
 
 function drawPattern(ctx, type, w, h) {
   ctx.clearRect(0,0,w,h);
+  
+  // Handle image patterns
+  const pattern = patterns.find(p => p.id === type);
+  if (pattern && pattern.type === 'image') {
+    drawImagePattern(ctx, type, w, h);
+    return;
+  }
   
   // Calculate scaling factor based on resolution (256 is baseline)
   const scaleFactor = Math.min(w, h) / 256;
@@ -604,9 +675,153 @@ function drawPattern(ctx, type, w, h) {
   }
 }
 
+function drawImagePattern(ctx, type, w, h) {
+  // Find the pattern definition to get the image source
+  const pattern = patterns.find(p => p.id === type);
+  if (!pattern || !pattern.src) {
+    drawImagePlaceholder(ctx, w, h, 'Image not found');
+    return;
+  }
+  
+  // Check if pixel data is cached (this is CORS-safe)
+  if (imageDataCache.has(pattern.src)) {
+    const cachedData = imageDataCache.get(pattern.src);
+    drawImageFromPixelData(ctx, cachedData, w, h);
+  } else {
+    // Show loading placeholder if not yet loaded
+    drawImagePlaceholder(ctx, w, h, 'Loading image...');
+  }
+}
+
+// Draw image from cached pixel data (CORS-safe, works like generated patterns)
+function drawImageFromPixelData(ctx, cachedData, targetWidth, targetHeight) {
+  ctx.clearRect(0, 0, targetWidth, targetHeight);
+  
+  const srcWidth = cachedData.width;
+  const srcHeight = cachedData.height;
+  const srcData = cachedData.data;
+  
+  // Calculate aspect ratio and target dimensions
+  const aspectRatio = srcHeight / srcWidth;
+  const scaledHeight = Math.round(targetWidth * aspectRatio);
+  
+  // Create target image data
+  const targetImageData = ctx.createImageData(targetWidth, targetHeight);
+  const targetData = targetImageData.data;
+  
+  // Scale and copy pixel data
+  for (let y = 0; y < scaledHeight; y++) {
+    for (let x = 0; x < targetWidth; x++) {
+      // Map target pixel to source pixel
+      const srcX = Math.floor((x / targetWidth) * srcWidth);
+      const srcY = Math.floor((y / scaledHeight) * srcHeight);
+      
+      const srcIndex = (srcY * srcWidth + srcX) * 4;
+      const targetIndex = (y * targetWidth + x) * 4;
+      
+      // Copy RGBA values
+      targetData[targetIndex] = srcData[srcIndex];         // R
+      targetData[targetIndex + 1] = srcData[srcIndex + 1]; // G
+      targetData[targetIndex + 2] = srcData[srcIndex + 2]; // B
+      targetData[targetIndex + 3] = 255;                    // A
+    }
+  }
+  
+  // Fill remaining space with black
+  for (let y = scaledHeight; y < targetHeight; y++) {
+    for (let x = 0; x < targetWidth; x++) {
+      const targetIndex = (y * targetWidth + x) * 4;
+      targetData[targetIndex] = 0;     // R
+      targetData[targetIndex + 1] = 0; // G
+      targetData[targetIndex + 2] = 0; // B
+      targetData[targetIndex + 3] = 255; // A
+    }
+  }
+  
+  // Put the pixel data to the canvas
+  ctx.putImageData(targetImageData, 0, 0);
+}
+
+function drawScaledImage(ctx, img, w, h) {
+  // Clear the canvas first
+  ctx.clearRect(0, 0, w, h);
+  
+  // Calculate aspect ratio preserving dimensions
+  // Horizontal = w (resolution), vertical = scaled to maintain aspect ratio
+  const aspectRatio = img.height / img.width;
+  const targetHeight = Math.round(w * aspectRatio);
+  
+  // Draw the image scaled to fit the width, maintaining aspect ratio
+  ctx.drawImage(img, 0, 0, w, targetHeight);
+  
+  // Fill any remaining space at the bottom with black
+  if (targetHeight < h) {
+    ctx.fillStyle = 'black';
+    ctx.fillRect(0, targetHeight, w, h - targetHeight);
+  }
+}
+
+// Convert image to data URL to avoid CORS issues
+function convertImageToDataURL(img) {
+  const tempCanvas = document.createElement('canvas');
+  const tempCtx = tempCanvas.getContext('2d');
+  
+  // Set canvas to image dimensions
+  tempCanvas.width = img.width;
+  tempCanvas.height = img.height;
+  
+  // Draw the image
+  tempCtx.drawImage(img, 0, 0);
+  
+  // Convert to data URL
+  return tempCanvas.toDataURL('image/png');
+}
+
+// Extract image data from the actual image (CORS-safe approach)
+function extractImageData(img, targetWidth, targetHeight) {
+  console.log(`Extracting real image data: ${targetWidth}x${targetHeight}`);
+  
+  // Create a temporary canvas to extract the real image data
+  const tempCanvas = document.createElement('canvas');
+  const tempCtx = tempCanvas.getContext('2d');
+  
+  tempCanvas.width = targetWidth;
+  tempCanvas.height = targetHeight;
+  
+  // Calculate aspect ratio and draw the real image
+  const aspectRatio = img.height / img.width;
+  const scaledHeight = Math.round(targetWidth * aspectRatio);
+  
+  // Draw the actual image
+  tempCtx.drawImage(img, 0, 0, targetWidth, scaledHeight);
+  
+  // Fill remaining space with black if needed
+  if (scaledHeight < targetHeight) {
+    tempCtx.fillStyle = 'black';
+    tempCtx.fillRect(0, scaledHeight, targetWidth, targetHeight - scaledHeight);
+  }
+  
+  // Extract the real image data
+  const imageData = tempCtx.getImageData(0, 0, targetWidth, targetHeight).data;
+  console.log(`Successfully extracted real image data: ${imageData.length} pixels`);
+  return imageData;
+}
+
+function drawImagePlaceholder(ctx, w, h, message) {
+  ctx.fillStyle = '#f0f0f0';
+  ctx.fillRect(0, 0, w, h);
+  ctx.fillStyle = '#666';
+  ctx.font = '16px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText(message, w/2, h/2);
+}
+
 function simulate(srcCtx, simCtx, dwellNs, delayNs, bwkHz, slewRateUs){
   const w=srcCtx.canvas.width, h=srcCtx.canvas.height;
-  const src=srcCtx.getImageData(0,0,w,h).data;
+  
+  // Get image data from the source canvas
+  const src = srcCtx.getImageData(0,0,w,h).data;
+  
   let dst=simCtx.createImageData(w,h), d=dst.data;
   
   // Calculate time constants
@@ -847,35 +1062,72 @@ function runSimulation() {
   const bw=+document.getElementById("bw-display").value;
   const slewRate=+document.getElementById("slewRate-display").value;
   const pat=selectedPattern;
-  const resolutionValues = [128, 256, 512, 1024, 4096];
+  const resolutionValues = [128, 256, 512, 1024, 2048];
   const resolutionSliderValue = parseInt(document.getElementById("resolution").value);
   const resolution = resolutionValues[resolutionSliderValue];
   
   const idealCanvas=document.getElementById("ideal");
   const simCanvas=document.getElementById("sim");
   
-  // Set canvas dimensions (square resolution)
-  idealCanvas.width = resolution;
-  idealCanvas.height = resolution;
-  simCanvas.width = resolution;
-  simCanvas.height = resolution;
+  // Set canvas dimensions based on pattern type
+  const pattern = patterns.find(p => p.id === pat);
+  if (pattern && pattern.type === 'image') {
+    // For images, preserve aspect ratio
+    if (imageCache.has(pattern.src)) {
+      const img = imageCache.get(pattern.src);
+      const aspectRatio = img.height / img.width;
+      const canvasHeight = Math.round(resolution * aspectRatio);
+      
+      idealCanvas.width = resolution;
+      idealCanvas.height = canvasHeight;
+      simCanvas.width = resolution;
+      simCanvas.height = canvasHeight;
+    } else {
+      // Fallback to square if image not loaded
+      idealCanvas.width = resolution;
+      idealCanvas.height = resolution;
+      simCanvas.width = resolution;
+      simCanvas.height = resolution;
+    }
+  } else {
+    // For all other patterns, use square resolution
+    idealCanvas.width = resolution;
+    idealCanvas.height = resolution;
+    simCanvas.width = resolution;
+    simCanvas.height = resolution;
+  }
   
   // Set display size to be constant to prevent UI jumping
   const displaySize = 300; // Fixed display size regardless of resolution
   
-  idealCanvas.style.width = displaySize + 'px';
-  idealCanvas.style.height = displaySize + 'px';
-  simCanvas.style.width = displaySize + 'px';
-  simCanvas.style.height = displaySize + 'px';
+  if (pattern && pattern.type === 'image') {
+    // For images, maintain aspect ratio in display
+    const aspectRatio = idealCanvas.height / idealCanvas.width;
+    const displayHeight = Math.round(displaySize * aspectRatio);
+    
+    idealCanvas.style.width = displaySize + 'px';
+    idealCanvas.style.height = displayHeight + 'px';
+    simCanvas.style.width = displaySize + 'px';
+    simCanvas.style.height = displayHeight + 'px';
+  } else {
+    // For square patterns, use square display
+    idealCanvas.style.width = displaySize + 'px';
+    idealCanvas.style.height = displaySize + 'px';
+    simCanvas.style.width = displaySize + 'px';
+    simCanvas.style.height = displaySize + 'px';
+  }
   
   const ideal=idealCanvas.getContext("2d");
   const sim=simCanvas.getContext("2d");
-  drawPattern(ideal,pat,resolution,resolution);
+  drawPattern(ideal,pat,idealCanvas.width,idealCanvas.height);
+  console.log(`Running simulation for pattern: ${pat}, resolution: ${idealCanvas.width}x${idealCanvas.height}`);
+  
+  // All patterns use the same simulation approach
   const recs=simulate(ideal,sim,dwell,delay,bw,slewRate);
   plot(document.getElementById("plot"),recs);
   
   // Calculate and display timing information
-  const timing = calculateTiming(dwell, delay, resolution);
+  const timing = calculateTiming(dwell, delay, idealCanvas.width);
   updateTimingDisplay(timing);
   
   // Update limitation status
@@ -900,7 +1152,7 @@ function updateDisplayValues() {
 }
 
 function updateResolutionDisplay() {
-  const resolutionValues = [128, 256, 512, 1024, 4096];
+  const resolutionValues = [128, 256, 512, 1024, 2048];
   const sliderValue = parseInt(document.getElementById("resolution").value);
   const resolution = resolutionValues[sliderValue];
   document.getElementById("resolution-display").value = `${resolution}x${resolution}`;
@@ -942,6 +1194,17 @@ function updateSliderFromInput(sliderId, inputId, isSlewRate = false) {
 }
 
 // Pattern Gallery Functions
+function updateImageThumbnail(patternId) {
+  const thumbnail = document.querySelector(`[data-pattern="${patternId}"]`);
+  if (!thumbnail) return;
+  
+  const canvas = thumbnail.querySelector('canvas');
+  if (!canvas) return;
+  
+  const ctx = canvas.getContext('2d');
+  drawPattern(ctx, patternId, 80, 80);
+}
+
 function createPatternThumbnail(pattern) {
   const thumbnail = document.createElement('div');
   thumbnail.className = 'pattern-thumbnail';
@@ -992,7 +1255,7 @@ function initializePatternGallery() {
   });
   
   // Select default pattern
-  selectPattern('zone');
+  selectPattern('image1');
 }
 
 // Auto-simulation on any parameter change
@@ -1039,6 +1302,7 @@ document.getElementById("slewRate-display").oninput = function() {
 document.getElementById("viewMode").onchange = runSimulation;
 
 // Initialize pattern gallery and run simulation
+preloadImages(); // Preload all images
 initializePatternGallery();
 updateDisplayValues();
 updateResolutionDisplay();

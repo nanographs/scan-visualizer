@@ -93,26 +93,78 @@ The Scan Visualizer is a web-based tool for simulating scanning microscopy syste
 ### 5. Resolution Control
 - **Element ID**: `resolution`
 - **Type**: Discrete slider with tick marks
-- **Options**: 128, 256, 512, 1024, 4096 (power-of-two)
+- **Options**: 128, 256, 512, 1024, 2048 (power-of-two)
 - **Default**: 256 (slider position 1)
 - **Impact**: Affects canvas dimensions and timing calculations
 - **Display**: Shows current resolution in "256x256" format
+- **Performance**: Max resolution limited to 2048 for optimal performance
 
 ### 6. Pattern Gallery
 - **Element ID**: `patternGallery`
 - **Type**: Visual thumbnail gallery (replaces dropdown)
-- **Options**: zone, checker, gradx, grady, ramp2d, slant, chirp, text, dots
-- **Default**: zone (Zone Plate)
-- **Desktop**: Square thumbnails (80px min, aspect-ratio: 1)
+- **Options**: image1, zone, checker, gradx, grady, ramp2d, slant, chirp, text, dots
+- **Default**: image1 (SEM Image 1) - image patterns appear first
+- **Desktop**: Square thumbnails (80px, aspect-ratio: 1)
 - **Mobile**: Compact rectangular (50x40px)
-- **Functions**: `createPatternThumbnail()`, `selectPattern()`, `initializePatternGallery()`
+- **Functions**: `createPatternThumbnail()`, `selectPattern()`, `initializePatternGallery()`, `updateImageThumbnail()`
 - **Visual Feedback**: Hover effects, selection highlighting
+- **Image Patterns**: SEM test images loaded from `test_images/` folder with aspect ratio preservation
 
 ### 7. View Mode Control
 - **Element ID**: `viewMode`
 - **Options**: normal, error, difference
 - **Default**: normal
 - **Functions**: `calculateDisplacement()`, `drawDisplacementHeatmap()`, `drawDifference()`
+
+## Image Pattern Architecture
+
+### Loading Pipeline
+The application supports external image patterns (e.g., SEM images) with a unified processing pipeline:
+
+1. **Image Loading** (`preloadImages()`)
+   - Loads images directly from local paths (requires HTTP server)
+   - Creates Image objects from source files
+   - Caches loaded images in `imageCache` Map
+
+2. **Pixel Data Extraction**
+   - Extracts raw pixel data immediately after image loads
+   - Stores in `imageDataCache` Map as `{data, width, height}`
+   - Uses temporary canvas to get `getImageData()`
+   - **CORS-safe**: Works when served via HTTP (local or deployed)
+
+3. **Pattern Drawing** (`drawImageFromPixelData()`)
+   - Draws using cached pixel data (not Image object)
+   - Scales pixel data from source to target resolution
+   - Preserves aspect ratio (width = resolution, height = scaled)
+   - Fills remaining space with black
+   - Uses `putImageData()` for rendering
+
+4. **Thumbnail Updates** (`updateImageThumbnail()`)
+   - Updates pattern gallery thumbnail after pixel data loads
+   - Replaces "Loading image..." placeholder with actual image
+
+### Unified Simulation
+- **Image patterns use the same `simulate()` function as generated patterns**
+- **No special cases or alternative code paths**
+- **Pixel data is extracted early, making images identical to generated patterns**
+- **All view modes work the same way for images and generated patterns**
+
+### CORS Considerations
+- **Local Development**: Requires HTTP server (e.g., `python3 -m http.server 8000`)
+- **GitHub Pages**: Works automatically (same origin)
+- **File Protocol** (`file://`): Will not work due to browser security
+- **Console Warning**: Displays helpful message if CORS errors occur
+
+### Data Structures
+```javascript
+// Image cache for Image objects
+const imageCache = new Map();
+// Pattern src → Image object
+
+// Image data cache for extracted pixels
+const imageDataCache = new Map();
+// Pattern src → {data: Uint8ClampedArray, width: number, height: number}
+```
 
 ## Core Functions
 
@@ -253,8 +305,8 @@ document.getElementById("viewMode").onchange = runSimulation;
 ## Critical Dependencies
 
 ### JavaScript Functions (Must Preserve)
-- `drawPattern()` - Pattern generation
-- `simulate()` - Core simulation engine
+- `drawPattern()` - Pattern generation (handles both generated and image patterns)
+- `simulate()` - Core simulation engine (unified for all pattern types)
 - `plot()` - Beam position plotting
 - `calculateTiming()` - Performance calculations
 - `updateTimingDisplay()` - Timing display updates
@@ -270,6 +322,11 @@ document.getElementById("viewMode").onchange = runSimulation;
 - `createPatternThumbnail()` - Generate pattern thumbnail
 - `selectPattern()` - Handle pattern selection
 - `initializePatternGallery()` - Initialize pattern gallery
+- `updateImageThumbnail()` - Update image thumbnail after pixel data loads
+- `preloadImages()` - Load and extract pixel data from image patterns
+- `drawImagePattern()` - Draw image patterns from cached pixel data
+- `drawImageFromPixelData()` - Scale and render pixel data to canvas
+- `drawImagePlaceholder()` - Show placeholder for missing images
 
 ### HTML Elements (Must Preserve)
 - Canvas elements: `ideal`, `sim`, `plot`
@@ -360,5 +417,52 @@ runSliderTests();
 - Preserve the event handling structure
 - Document any new functions added
 - Update this specification when adding features
+
+## Deployment and Development
+
+### Local Development
+**Requires HTTP Server** for image patterns to work:
+```bash
+# Navigate to project directory
+cd "/path/to/Scan Visualizer"
+
+# Start Python HTTP server
+python3 -m http.server 8000
+
+# Open in browser
+http://localhost:8000
+```
+
+**Why HTTP Server is Required:**
+- Browser security (CORS) blocks `getImageData()` when using `file://` protocol
+- HTTP server provides same-origin access to images
+- Allows pixel data extraction from image patterns
+
+### GitHub Pages Deployment
+**Automatic Deployment:**
+- Push to `main` branch
+- GitHub Pages serves from repository root
+- Image patterns work automatically (same origin)
+- No CORS issues in production
+
+### Adding New Image Patterns
+1. **Add image file** to `test_images/` folder
+2. **Add pattern definition** to `patterns` array:
+   ```javascript
+   { id: 'image2', name: 'SEM Image 2', type: 'image', src: 'test_images/your_image.jpeg' }
+   ```
+3. **Position at top** of patterns array (images appear first)
+4. **Supported formats**: JPEG, PNG (any format supported by HTML Image)
+5. **Aspect ratio**: Automatically preserved, scaled to fit resolution
+
+### Development Workflow
+1. **Make changes** to `index.html`
+2. **Test locally** with HTTP server
+3. **Verify** all patterns work (generated and images)
+4. **Check** mobile responsiveness
+5. **Run tests** (if available)
+6. **Update** this specification
+7. **Commit and push** to GitHub
+8. **Verify** on GitHub Pages
 
 This specification serves as the definitive reference for maintaining and extending the Scan Visualizer without losing functionality.
