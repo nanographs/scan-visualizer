@@ -314,15 +314,16 @@
       }
       
       .control-row {
-        flex-direction: column;
-        align-items: stretch;
+        flex-direction: row;
+        align-items: center;
         margin-bottom: 8px;
+        gap: 8px;
       }
       
       .control-row label {
         min-width: auto;
         font-size: 12px;
-        margin-bottom: 3px;
+        margin-bottom: 0;
       }
       
       .control-row select {
@@ -419,16 +420,8 @@
           <input id="slewRate" type="range" min="0" max="100" value="57" step="1">
         </div>
       </div>
-    </div>
-    
-    <!-- Plot at the top -->
-    <div class="plot-container">
-      <canvas id="plot" width="500" height="200"></canvas>
-      <div class="plot-legend">Red = Digital command; Blue = 1st line; Green = 2nd line; Orange = Last line</div>
-    </div>
-    
-    <!-- Secondary controls -->
-    <div class="secondary-controls">
+      
+      <!-- Additional controls moved from secondary -->
       <div class="control-row">
         <label>Resolution:</label>
         <select id="resolution">
@@ -447,6 +440,13 @@
         </select>
       </div>
     </div>
+    
+    <!-- Plot at the top -->
+    <div class="plot-container">
+      <canvas id="plot" width="500" height="200"></canvas>
+      <div class="plot-legend">Red = Digital command; Blue = 1st line; Green = 2nd line; Orange = Last line</div>
+    </div>
+    
     
     <h2>Scan Visualizer</h2>
     

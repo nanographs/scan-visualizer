@@ -33,20 +33,16 @@ The Scan Visualizer is a web-based tool for simulating scanning microscopy syste
     Line: <span id="lineTime">--</span> | Frame: <span id="frameTime">--</span> | FPS: <span id="fps">--</span>
   </div>
   
-  <!-- Main controls (thumb-accessible) -->
+  <!-- Main controls (unified control panel) -->
   <div class="main-controls">
     <!-- 4 slider rows with number inputs -->
+    <!-- Resolution and View Mode controls -->
   </div>
   
   <!-- Plot with beam position traces -->
   <div class="plot-container">
     <canvas id="plot"></canvas>
     <div class="plot-legend">Red = Digital command; Blue = 1st line; Green = 2nd line; Orange = Last line</div>
-  </div>
-  
-  <!-- Secondary controls -->
-  <div class="secondary-controls">
-    <!-- Resolution, Pattern, View Mode dropdowns -->
   </div>
   
   <!-- Heading and system info -->
@@ -204,18 +200,16 @@ document.getElementById("viewMode").onchange = runSimulation;
 1. **Pattern Gallery** (visual pattern selection at the very top)
 2. **Images with vertical labels** (ideal pattern and simulated scan)
 3. **Timing information** (line time, frame time, FPS)
-4. **Main controls/sliders** (bandwidth, dwell time, line delay, slew rate)
+4. **Main controls** (bandwidth, dwell time, line delay, slew rate, resolution, view mode)
 5. **Plot with beam position traces** (red, blue, green, orange lines)
-6. **Secondary controls** (resolution, view mode)
-7. **"Scan Visualizer" heading**
-8. **System limitations display**
+6. **"Scan Visualizer" heading**
+7. **System limitations display**
 
 ### Layout Rationale
 - **Pattern gallery at top**: Visual pattern selection for immediate feedback
 - **Images next**: Show selected pattern and simulation results
-- **Main controls**: Primary parameters for thumb access
+- **Main controls**: All parameters in one unified control panel (sliders + resolution + view mode)
 - **Plot prominent**: Shows effects of parameter changes
-- **Secondary controls**: Less frequently changed settings (resolution, view mode)
 - **Heading and info**: Contextual information
 - **System limitations**: Performance metrics and constraints
 
